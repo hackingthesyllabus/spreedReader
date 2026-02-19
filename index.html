@@ -7,7 +7,7 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&display=swap" rel="stylesheet">
 
   <style>
     :root{
@@ -40,6 +40,7 @@
       display:flex;
       justify-content: center;
       align-items: flex-start;
+      position: relative;
     }
 
     .stageUpper{ padding-top: 64px; }
@@ -49,30 +50,67 @@
       padding-top: 24px;
     }
 
+    #centerLine{
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 50%;
+      width: 2px;
+      transform: translateX(-1px);
+      background: rgba(0,0,0,0.08);
+      pointer-events: none;
+    }
+
     #readerBox{
       width: min(1200px, 92vw);
       display: grid;
       gap: 14px;
+      position: relative;
+      z-index: 1;
     }
 
     #word{
-      font-weight: 800;
-      letter-spacing: -0.02em;
+      font-family: Montserrat, system-ui, Arial, sans-serif;
+      font-weight: 600;
+      letter-spacing: -0.01em;
       line-height: 1;
       user-select: none;
-      text-align: center;
       max-width: 92vw;
       margin: 0 auto;
       font-size: 64px;
     }
 
-    .wLeft, .wRight, .wFocus{
-      display:inline-block;
-      white-space: pre;
+    /* Fixed ORP layout */
+    #wordGrid{
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: baseline;
+      width: min(1100px, 92vw);
+      margin: 0 auto;
     }
 
-    .wFocus{
+    #wLeft{
+      justify-self: end;
+      text-align: right;
+      white-space: pre;
+      padding-right: 0px;
+    }
+
+    #wFocus{
+      justify-self: center;
+      text-align: center;
+      white-space: pre;
       color: var(--focus);
+      font-weight: 700;
+      padding: 0 0px;
+      min-width: 1ch;
+    }
+
+    #wRight{
+      justify-self: start;
+      text-align: left;
+      white-space: pre;
+      padding-left: 0px;
     }
 
     #controls{
@@ -158,7 +196,7 @@
     #play{
       padding: 12px 18px;
       border-radius: 14px;
-      font-weight: 900;
+      font-weight: 800;
       font-size: 16px;
       border: 1px solid rgba(0,0,0,0.22);
     }
@@ -220,8 +258,16 @@
 <body>
   <div id="app">
     <div id="stage" class="stageUpper">
+      <div id="centerLine" aria-hidden="true"></div>
+
       <div id="readerBox">
-        <div id="word">Paste text below to begin.</div>
+        <div id="word">
+          <div id="wordGrid" aria-live="polite" aria-atomic="true">
+            <span id="wLeft"></span>
+            <span id="wFocus"></span>
+            <span id="wRight"></span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -231,7 +277,7 @@
         <div class="panel">
           <div class="panelTitle">Text input</div>
 
-          <textarea id="textInput" rows="8">Paste text here. Press Play.</textarea>
+          <textarea id="textInput" rows="8" placeholder="Paste text here. Press Play."></textarea>
 
           <div id="fileBox">
             <div class="panelTitle">Upload</div>
@@ -299,12 +345,11 @@
               <input id="focusColor" type="color" value="#e53935">
             </label>
             <label>
-              Font
-              <select id="font">
-                <option value="Montserrat, system-ui, Arial" selected>Montserrat</option>
-                <option value="system-ui, Arial">System</option>
-                <option value="Georgia, serif">Georgia</option>
-                <option value="'Courier New', monospace">Courier</option>
+              Font weight
+              <select id="weight">
+                <option value="500">Light</option>
+                <option value="600" selected>Regular</option>
+                <option value="700">Bold</option>
               </select>
             </label>
           </div>
@@ -427,13 +472,8 @@
       return chars.indexOf(last) >= 0;
     }
 
-    function escapeHtml(s) {
-      return String(s)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
+    function setStatus(s) {
+      statusEl.textContent = s;
     }
 
     function computeOrpIndex(coreLen) {
@@ -450,12 +490,8 @@
 
       const m = w.match(/^([^A-Za-z0-9]*)([A-Za-z0-9]+)([^A-Za-z0-9]*)$/);
       if (!m) {
-        const idx0 = clamp(Math.floor(w.length / 2), 0, Math.max(0, w.length - 1));
-        return {
-          left: w.slice(0, idx0),
-          focus: w.slice(idx0, idx0 + 1),
-          right: w.slice(idx0 + 1)
-        };
+        const i = clamp(Math.floor(w.length / 2), 0, Math.max(0, w.length - 1));
+        return { left: w.slice(0, i), focus: w.slice(i, i + 1), right: w.slice(i + 1) };
       }
 
       const lead = m[1] || "";
@@ -463,12 +499,81 @@
       const trail = m[3] || "";
 
       const orp = clamp(computeOrpIndex(core.length), 0, Math.max(0, core.length - 1));
+      return {
+        left: lead + core.slice(0, orp),
+        focus: core.slice(orp, orp + 1),
+        right: core.slice(orp + 1) + trail
+      };
+    }
 
-      const left = lead + core.slice(0, orp);
-      const focus = core.slice(orp, orp + 1);
-      const right = core.slice(orp + 1) + trail;
+    async function extractPdfText(arrayBuffer) {
+      if (!window.pdfjsLib) throw new Error("PDF library not available.");
 
-      return { left, focus, right };
+      const workerUrl = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js";
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
+
+      const loadingTask = window.pdfjsLib.getDocument({ data: arrayBuffer });
+      const pdf = await loadingTask.promise;
+
+      const ignore = ignoreHeaderFooter.checked;
+      const trim = clamp(Number(trimPercent.value) || 0, 0, 20) / 100;
+
+      let out = "";
+      for (let p = 1; p <= pdf.numPages; p += 1) {
+        setStatus("Reading PDF page " + p + " of " + pdf.numPages + " ...");
+
+        const page = await pdf.getPage(p);
+        const viewport = page.getViewport({ scale: 1.0 });
+        const textContent = await page.getTextContent();
+
+        const pageHeight = viewport.height;
+        const yMin = pageHeight * trim;
+        const yMax = pageHeight * (1 - trim);
+
+        const items = textContent.items || [];
+        const kept = [];
+
+        for (let i = 0; i < items.length; i += 1) {
+          const it = items[i];
+          if (!it || !it.str) continue;
+
+          let y = null;
+          if (it.transform && it.transform.length >= 6) y = it.transform[5];
+
+          if (ignore && typeof y === "number") {
+            if (y < yMin) continue;
+            if (y > yMax) continue;
+          }
+
+          kept.push({ s: it.str, y: y });
+        }
+
+        kept.sort((a, b) => {
+          const ay = typeof a.y === "number" ? a.y : 0;
+          const by = typeof b.y === "number" ? b.y : 0;
+          return by - ay;
+        });
+
+        let lastY = null;
+        for (let i = 0; i < kept.length; i += 1) {
+          const s = kept[i].s;
+          const y = kept[i].y;
+
+          if (typeof y === "number" && typeof lastY === "number") {
+            const dy = Math.abs(y - lastY);
+            if (dy > 12) out += "\n";
+          }
+
+          out += s + " ";
+          if (typeof y === "number") lastY = y;
+        }
+
+        out += "\n\n";
+      }
+
+      out = out.replace(/[ \t]+\n/g, "\n");
+      out = out.replace(/\n{3,}/g, "\n\n");
+      return out.trim();
     }
 
     const textInput = document.getElementById("textInput");
@@ -492,6 +597,7 @@
     const skipParen = document.getElementById("skipParen");
     const focusMode = document.getElementById("focusMode");
     const focusColor = document.getElementById("focusColor");
+    const weight = document.getElementById("weight");
 
     const playBtn = document.getElementById("play");
     const pauseBtn = document.getElementById("pause");
@@ -508,20 +614,17 @@
     const sizeLabel = document.getElementById("sizeLabel");
     const textColor = document.getElementById("textColor");
     const bgColor = document.getElementById("bgColor");
-    const font = document.getElementById("font");
     const align = document.getElementById("align");
 
     const stage = document.getElementById("stage");
-    const wordEl = document.getElementById("word");
+    const wLeftEl = document.getElementById("wLeft");
+    const wFocusEl = document.getElementById("wFocus");
+    const wRightEl = document.getElementById("wRight");
 
     let words = [];
     let idx = 0;
     let isPlaying = false;
     let timer = null;
-
-    function setStatus(s) {
-      statusEl.textContent = s;
-    }
 
     function baseMs() {
       const v = clamp(Number(wpm.value), 60, 2000);
@@ -540,10 +643,16 @@
       idxLabel.textContent = words.length ? String(idx + 1) : "0";
     }
 
+    function clearDisplay() {
+      wLeftEl.textContent = "";
+      wFocusEl.textContent = "";
+      wRightEl.textContent = "";
+      updateMeta();
+    }
+
     function renderWord() {
       if (!words.length) {
-        wordEl.textContent = "Paste text below to begin.";
-        updateMeta();
+        clearDisplay();
         return;
       }
 
@@ -551,16 +660,16 @@
       updateMeta();
 
       if (!focusMode.checked) {
-        wordEl.textContent = w;
+        wLeftEl.textContent = "";
+        wFocusEl.textContent = w;
+        wRightEl.textContent = "";
         return;
       }
 
       const parts = splitWordForFocus(w);
-
-      wordEl.innerHTML =
-        `<span class="wLeft">${escapeHtml(parts.left)}</span>` +
-        `<span class="wFocus">${escapeHtml(parts.focus)}</span>` +
-        `<span class="wRight">${escapeHtml(parts.right)}</span>`;
+      wLeftEl.textContent = parts.left;
+      wFocusEl.textContent = parts.focus;
+      wRightEl.textContent = parts.right;
     }
 
     function stop() {
@@ -640,94 +749,32 @@
     function applyStyles() {
       document.documentElement.style.setProperty("--focus", focusColor.value);
 
-      document.body.style.fontFamily = font.value;
+      const wt = String(weight.value || "600");
+      document.getElementById("word").style.fontWeight = wt;
+
       document.body.style.backgroundColor = bgColor.value;
       document.body.style.color = textColor.value;
 
-      wordEl.style.fontFamily = font.value;
+      const wordEl = document.getElementById("word");
       wordEl.style.fontSize = String(size.value) + "px";
-      wordEl.style.textAlign = align.value;
+      wordEl.style.textAlign = "center";
       wordEl.style.color = textColor.value;
 
       stage.className = "";
       if (readerPos.value === "top") stage.classList.add("stageTop");
       if (readerPos.value === "upper") stage.classList.add("stageUpper");
       if (readerPos.value === "middle") stage.classList.add("stageMiddle");
-    }
 
-    async function extractPdfText(arrayBuffer) {
-      if (!window.pdfjsLib) {
-        throw new Error("PDF library not available.");
+      const grid = document.getElementById("wordGrid");
+      if (align.value === "left") {
+        grid.style.width = "min(1100px, 92vw)";
       }
-
-      const workerUrl = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js";
-      window.pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
-
-      const loadingTask = window.pdfjsLib.getDocument({ data: arrayBuffer });
-      const pdf = await loadingTask.promise;
-
-      const ignore = ignoreHeaderFooter.checked;
-      const trim = clamp(Number(trimPercent.value) || 0, 0, 20) / 100;
-
-      let out = "";
-      for (let p = 1; p <= pdf.numPages; p += 1) {
-        setStatus("Reading PDF page " + p + " of " + pdf.numPages + " ...");
-
-        const page = await pdf.getPage(p);
-        const viewport = page.getViewport({ scale: 1.0 });
-        const textContent = await page.getTextContent();
-
-        const pageHeight = viewport.height;
-        const yMin = pageHeight * trim;
-        const yMax = pageHeight * (1 - trim);
-
-        const items = textContent.items || [];
-        const kept = [];
-
-        for (let i = 0; i < items.length; i += 1) {
-          const it = items[i];
-          if (!it || !it.str) continue;
-
-          let y = null;
-          if (it.transform && it.transform.length >= 6) {
-            y = it.transform[5];
-          }
-
-          if (ignore && typeof y === "number") {
-            if (y < yMin) continue;
-            if (y > yMax) continue;
-          }
-
-          kept.push({ s: it.str, y: y });
-        }
-
-        kept.sort((a, b) => {
-          const ay = typeof a.y === "number" ? a.y : 0;
-          const by = typeof b.y === "number" ? b.y : 0;
-          if (ay === by) return 0;
-          return by - ay;
-        });
-
-        let lastY = null;
-        for (let i = 0; i < kept.length; i += 1) {
-          const s = kept[i].s;
-          const y = kept[i].y;
-
-          if (typeof y === "number" && typeof lastY === "number") {
-            const dy = Math.abs(y - lastY);
-            if (dy > 12) out += "\n";
-          }
-
-          out += s + " ";
-          if (typeof y === "number") lastY = y;
-        }
-
-        out += "\n\n";
+      if (align.value === "center") {
+        grid.style.width = "min(1100px, 92vw)";
       }
-
-      out = out.replace(/[ \t]+\n/g, "\n");
-      out = out.replace(/\n{3,}/g, "\n\n");
-      return out.trim();
+      if (align.value === "right") {
+        grid.style.width = "min(1100px, 92vw)";
+      }
     }
 
     textInput.addEventListener("input", rebuildWordsFromInput);
@@ -737,16 +784,19 @@
       if (isPlaying) start();
     });
 
-    commaPause.addEventListener("input", () => updateLabels());
-    periodPause.addEventListener("input", () => updateLabels());
+    commaPause.addEventListener("input", updateLabels);
+    periodPause.addEventListener("input", updateLabels);
 
     skipParen.addEventListener("change", rebuildWordsFromInput);
 
-    focusMode.addEventListener("change", () => {
+    focusMode.addEventListener("change", renderWord);
+
+    focusColor.addEventListener("input", () => {
+      applyStyles();
       renderWord();
     });
 
-    focusColor.addEventListener("input", () => {
+    weight.addEventListener("change", () => {
       applyStyles();
       renderWord();
     });
@@ -769,7 +819,7 @@
       rebuildWordsFromInput();
     });
 
-    trimPercent.addEventListener("input", () => updateLabels());
+    trimPercent.addEventListener("input", updateLabels);
 
     fileInput.addEventListener("change", async () => {
       const f = fileInput.files && fileInput.files[0];
@@ -787,7 +837,7 @@
           const extracted = await extractPdfText(buf);
 
           if (!extracted || extracted.length < 20) {
-            setStatus("PDF loaded, but little text was extracted. This PDF may be scanned images. OCR can be added later.");
+            setStatus("PDF loaded, but little text was extracted. This PDF may be scanned images.");
           } else {
             setStatus("PDF text extracted. Ready.");
           }
@@ -823,11 +873,6 @@
     });
 
     bgColor.addEventListener("input", () => {
-      applyStyles();
-      renderWord();
-    });
-
-    font.addEventListener("change", () => {
       applyStyles();
       renderWord();
     });
