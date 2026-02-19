@@ -1,108 +1,508 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8">
   <title>Speed Reader</title>
-  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header class="top">
-    <h1>Speed Reader</h1>
-    <p class="sub">Paste text. Press Play. Adjust speed and styling.</p>
-  </header>
+  <div id="app">
+    <div id="stage">
+      <div id="word">Paste text below to begin.</div>
+    </div>
 
-  <main class="layout">
-    <section class="panel">
-      <label class="label" for="textInput">Text input</label>
-      <textarea id="textInput" rows="10">Paste text here. Press Play.</textarea>
+    <div id="controls">
+      <div id="controlsInner">
+        <div id="leftCol">
+          <div id="labelA">Text input</div>
+          <textarea id="textInput" rows="8">Paste text here. Press Play.</textarea>
 
-      <div class="hint">
-        Hotkeys: Space play or pause. Left and right step. Esc stops.
-      </div>
-    </section>
+          <div id="fileRow">
+            <input id="fileInput" type="file" accept=".txt,.md,.html,.rtf">
+            <button id="clearFile">Clear</button>
+          </div>
 
-    <section class="panel">
-      <h2>Controls</h2>
-
-      <div class="control">
-        <div class="row">
-          <span>Speed (WPM): <strong id="wpmLabel">350</strong></span>
+          <div id="hint">
+            Hotkeys. Space toggles play. Left and right step. Escape stops.
+          </div>
         </div>
-        <input id="wpm" type="range" min="60" max="1200" value="350" />
+
+        <div id="rightCol">
+          <div id="labelB">Controls</div>
+
+          <div class="row">
+            <div>Speed WPM <span id="wpmLabel">350</span></div>
+            <input id="wpm" type="range" min="60" max="1200" value="350">
+          </div>
+
+          <div class="row">
+            <div>Comma pause ms <span id="commaLabel">120</span></div>
+            <input id="commaPause" type="range" min="0" max="600" value="120">
+          </div>
+
+          <div class="row">
+            <div>Period pause ms <span id="periodLabel">220</span></div>
+            <input id="periodPause" type="range" min="0" max="1200" value="220">
+          </div>
+
+          <div class="row">
+            <label id="skipLabel">
+              <input id="skipParen" type="checkbox">
+              Skip parentheses content
+            </label>
+          </div>
+
+          <div id="btnRowA">
+            <button id="play">Play</button>
+            <button id="pause">Pause</button>
+            <button id="reset">Reset</button>
+          </div>
+
+          <div id="btnRowB">
+            <button id="prev">Prev</button>
+            <button id="next">Next</button>
+          </div>
+
+          <div id="meta">
+            Word <span id="idxLabel">0</span> of <span id="totalLabel">0</span>
+          </div>
+
+          <div class="row">
+            <div>Reader position</div>
+            <select id="readerPos">
+              <option value="top">Top</option>
+              <option value="upper" selected>Upper</option>
+              <option value="middle">Middle</option>
+            </select>
+          </div>
+
+          <div class="row">
+            <div>Font size <span id="sizeLabel">64</span></div>
+            <input id="size" type="range" min="18" max="120" value="64">
+          </div>
+
+          <div class="row2">
+            <label>
+              Text
+              <input id="textColor" type="color" value="#111111">
+            </label>
+            <label>
+              Background
+              <input id="bgColor" type="color" value="#f6f4ee">
+            </label>
+          </div>
+
+          <div class="row">
+            <div>Font</div>
+            <select id="font">
+              <option value="system-ui, Arial" selected>System</option>
+              <option value="Georgia, serif">Georgia</option>
+              <option value="Courier New, monospace">Courier</option>
+            </select>
+          </div>
+
+          <div class="row">
+            <div>Align</div>
+            <select id="align">
+              <option value="left">Left</option>
+              <option value="center" selected>Center</option>
+              <option value="right">Right</option>
+            </select>
+          </div>
+        </div>
       </div>
+    </div>
+  </div>
 
-      <div class="buttons">
-        <button id="play">Play</button>
-        <button id="pause">Pause</button>
-        <button id="reset">Reset</button>
-      </div>
+  <script>
+    function clamp(n, min, max) {
+      if (n < min) return min;
+      if (n > max) return max;
+      return n;
+    }
 
-      <div class="buttons">
-        <button id="prev">Prev</button>
-        <button id="next">Next</button>
-      </div>
+    function normalizeSpaces(text) {
+      return text.replace(/\s+/g, " ").trim();
+    }
 
-      <div class="meta">
-        Word <span id="idxLabel">0</span> of <span id="totalLabel">0</span>
-      </div>
+    function removeParenContent(text) {
+      let t = text;
+      t = t.replace(/\([^)]*\)/g, " ");
+      t = t.replace(/\[[^\]]*\]/g, " ");
+      return t;
+    }
 
-      <div class="grid2">
-        <label class="label">
-          Font
-          <select id="font">
-            <option value="system-ui, Arial">System</option>
-            <option value="Inter, system-ui, Arial">Inter</option>
-            <option value="Montserrat, system-ui, Arial">Montserrat</option>
-            <option value="Georgia, serif">Georgia</option>
-            <option value="'Courier New', monospace">Courier</option>
-          </select>
-        </label>
+    function tokenize(text, skipParen) {
+      let t = text || "";
+      t = normalizeSpaces(t);
+      if (skipParen) t = removeParenContent(t);
+      t = normalizeSpaces(t);
+      if (!t) return [];
+      return t.split(" ").filter(Boolean);
+    }
 
-        <label class="label">
-          Font size: <span id="sizeLabel">64</span>px
-          <input id="size" type="range" min="18" max="120" value="64" />
-        </label>
-      </div>
+    function endsWithAny(word, chars) {
+      if (!word) return false;
+      const last = word[word.length - 1];
+      return chars.indexOf(last) >= 0;
+    }
 
-      <div class="grid2">
-        <label class="label">
-          Text colour
-          <input id="textColor" type="color" value="#111111" />
-        </label>
+    const textInput = document.getElementById("textInput");
+    const fileInput = document.getElementById("fileInput");
+    const clearFile = document.getElementById("clearFile");
 
-        <label class="label">
-          Background
-          <input id="bgColor" type="color" value="#f6f4ee" />
-        </label>
-      </div>
+    const wpm = document.getElementById("wpm");
+    const wpmLabel = document.getElementById("wpmLabel");
 
-      <div class="grid2">
-        <label class="label">
-          Horizontal
-          <select id="align">
-            <option value="left">Left</option>
-            <option value="center" selected>Center</option>
-            <option value="right">Right</option>
-          </select>
-        </label>
+    const commaPause = document.getElementById("commaPause");
+    const commaLabel = document.getElementById("commaLabel");
 
-        <label class="label">
-          Vertical
-          <select id="vertical">
-            <option value="top">Top</option>
-            <option value="middle" selected>Middle</option>
-            <option value="bottom">Bottom</option>
-          </select>
-        </label>
-      </div>
-    </section>
-  </main>
+    const periodPause = document.getElementById("periodPause");
+    const periodLabel = document.getElementById("periodLabel");
 
-  <section id="readerStage" class="stage">
-    <div id="word" class="word">Paste some text to begin.</div>
-  </section>
+    const skipParen = document.getElementById("skipParen");
 
-  <script src="app.js"></script>
+    const playBtn = document.getElementById("play");
+    const pauseBtn = document.getElementById("pause");
+    const resetBtn = document.getElementById("reset");
+    const prevBtn = document.getElementById("prev");
+    const nextBtn = document.getElementById("next");
+
+    const idxLabel = document.getElementById("idxLabel");
+    const totalLabel = document.getElementById("totalLabel");
+
+    const readerPos = document.getElementById("readerPos");
+    const size = document.getElementById("size");
+    const sizeLabel = document.getElementById("sizeLabel");
+    const textColor = document.getElementById("textColor");
+    const bgColor = document.getElementById("bgColor");
+    const font = document.getElementById("font");
+    const align = document.getElementById("align");
+
+    const app = document.getElementById("app");
+    const stage = document.getElementById("stage");
+    const wordEl = document.getElementById("word");
+
+    let words = [];
+    let idx = 0;
+    let isPlaying = false;
+    let timer = null;
+
+    function baseMs() {
+      const v = clamp(Number(wpm.value), 60, 2000);
+      return Math.round(60000 / v);
+    }
+
+    function extraPauseMs(word) {
+      if (!word) return 0;
+
+      if (endsWithAny(word, ",;:")) {
+        return Number(commaPause.value) || 0;
+      }
+
+      if (endsWithAny(word, ".!?")) {
+        return Number(periodPause.value) || 0;
+      }
+
+      return 0;
+    }
+
+    function updateMeta() {
+      totalLabel.textContent = String(words.length);
+      idxLabel.textContent = words.length ? String(idx + 1) : "0";
+    }
+
+    function renderWord() {
+      if (!words.length) {
+        wordEl.textContent = "Paste text below to begin.";
+      } else {
+        wordEl.textContent = words[idx] || "";
+      }
+      updateMeta();
+    }
+
+    function stop() {
+      isPlaying = false;
+      if (timer) clearTimeout(timer);
+      timer = null;
+    }
+
+    function scheduleNext() {
+      if (!isPlaying) return;
+
+      const last = Math.max(0, words.length - 1);
+      if (!words.length) {
+        stop();
+        return;
+      }
+
+      const current = words[idx] || "";
+      const delay = baseMs() + extraPauseMs(current);
+
+      timer = setTimeout(() => {
+        if (!isPlaying) return;
+        if (idx >= last) {
+          idx = last;
+          renderWord();
+          stop();
+          return;
+        }
+        idx += 1;
+        renderWord();
+        scheduleNext();
+      }, delay);
+    }
+
+    function start() {
+      if (!words.length) return;
+      stop();
+      isPlaying = true;
+      scheduleNext();
+    }
+
+    function reset() {
+      stop();
+      idx = 0;
+      renderWord();
+    }
+
+    function stepPrev() {
+      stop();
+      idx = clamp(idx - 1, 0, Math.max(0, words.length - 1));
+      renderWord();
+    }
+
+    function stepNext() {
+      stop();
+      idx = clamp(idx + 1, 0, Math.max(0, words.length - 1));
+      renderWord();
+    }
+
+    function rebuildWordsFromInput() {
+      words = tokenize(textInput.value, skipParen.checked);
+      idx = 0;
+      stop();
+      renderWord();
+    }
+
+    function applyStyles() {
+      document.body.style.margin = "0";
+      document.body.style.fontFamily = font.value;
+      document.body.style.backgroundColor = bgColor.value;
+      document.body.style.color = textColor.value;
+
+      app.style.minHeight = "100vh";
+      app.style.display = "flex";
+      app.style.flexDirection = "column";
+
+      stage.style.display = "flex";
+      stage.style.padding = "24px";
+      stage.style.flex = "1";
+
+      if (readerPos.value === "top") stage.style.alignItems = "flexStart";
+      if (readerPos.value === "upper") stage.style.alignItems = "flexStart";
+      if (readerPos.value === "middle") stage.style.alignItems = "center";
+
+      stage.style.justifyContent = align.value === "left" ? "flexStart" : align.value === "right" ? "flexEnd" : "center";
+
+      if (readerPos.value === "top") stage.style.paddingTop = "24px";
+      if (readerPos.value === "upper") stage.style.paddingTop = "64px";
+      if (readerPos.value === "middle") stage.style.paddingTop = "24px";
+
+      wordEl.style.fontSize = String(size.value) + "px";
+      wordEl.style.fontWeight = "700";
+      wordEl.style.lineHeight = "1";
+      wordEl.style.maxWidth = "90vw";
+      wordEl.style.userSelect = "none";
+      wordEl.style.textAlign = align.value;
+      wordEl.style.color = textColor.value;
+
+      sizeLabel.textContent = String(size.value);
+
+      const controls = document.getElementById("controls");
+      const controlsInner = document.getElementById("controlsInner");
+      const leftCol = document.getElementById("leftCol");
+      const rightCol = document.getElementById("rightCol");
+
+      controls.style.padding = "16px";
+      controls.style.backgroundColor = "rgba(255,255,255,0.55)";
+      controls.style.borderTop = "1px solid rgba(0,0,0,0.14)";
+
+      controlsInner.style.display = "grid";
+      controlsInner.style.gridTemplateColumns = "1fr 420px";
+      controlsInner.style.gap = "16px";
+      controlsInner.style.alignItems = "start";
+
+      leftCol.style.backgroundColor = "rgba(255,255,255,0.55)";
+      leftCol.style.border = "1px solid rgba(0,0,0,0.14)";
+      leftCol.style.borderRadius = "12px";
+      leftCol.style.padding = "12px";
+
+      rightCol.style.backgroundColor = "rgba(255,255,255,0.55)";
+      rightCol.style.border = "1px solid rgba(0,0,0,0.14)";
+      rightCol.style.borderRadius = "12px";
+      rightCol.style.padding = "12px";
+
+      const labelA = document.getElementById("labelA");
+      const labelB = document.getElementById("labelB");
+      labelA.style.fontWeight = "700";
+      labelA.style.marginBottom = "8px";
+      labelB.style.fontWeight = "700";
+      labelB.style.marginBottom = "8px";
+
+      textInput.style.width = "100%";
+      textInput.style.padding = "12px";
+      textInput.style.borderRadius = "10px";
+      textInput.style.border = "1px solid rgba(0,0,0,0.14)";
+      textInput.style.backgroundColor = "rgba(255,255,255,0.65)";
+      textInput.style.fontSize = "14px";
+      textInput.style.lineHeight = "1.4";
+      textInput.style.fontFamily = "inherit";
+
+      const fileRow = document.getElementById("fileRow");
+      fileRow.style.display = "flex";
+      fileRow.style.gap = "8px";
+      fileRow.style.marginTop = "10px";
+      fileRow.style.flexWrap = "wrap";
+
+      const hint = document.getElementById("hint");
+      hint.style.marginTop = "10px";
+      hint.style.fontSize = "12px";
+      hint.style.opacity = "0.75";
+
+      const btnRowA = document.getElementById("btnRowA");
+      const btnRowB = document.getElementById("btnRowB");
+      btnRowA.style.display = "flex";
+      btnRowA.style.gap = "8px";
+      btnRowA.style.flexWrap = "wrap";
+      btnRowA.style.marginTop = "10px";
+      btnRowB.style.display = "flex";
+      btnRowB.style.gap = "8px";
+      btnRowB.style.flexWrap = "wrap";
+      btnRowB.style.marginTop = "8px";
+
+      const meta = document.getElementById("meta");
+      meta.style.marginTop = "10px";
+      meta.style.fontSize = "12px";
+      meta.style.opacity = "0.8";
+
+      const rows = Array.from(document.querySelectorAll(".row"));
+      rows.forEach(r => {
+        r.style.display = "grid";
+        r.style.gap = "6px";
+        r.style.marginTop = "10px";
+        r.style.fontSize = "12px";
+        r.style.opacity = "0.9";
+      });
+
+      const row2 = Array.from(document.querySelectorAll(".row2"));
+      row2.forEach(r => {
+        r.style.display = "grid";
+        r.style.gridTemplateColumns = "1fr 1fr";
+        r.style.gap = "10px";
+        r.style.marginTop = "10px";
+        r.style.fontSize = "12px";
+        r.style.opacity = "0.9";
+      });
+
+      const buttons = Array.from(document.querySelectorAll("button"));
+      buttons.forEach(b => {
+        b.style.padding = "8px 10px";
+        b.style.borderRadius = "10px";
+        b.style.border = "1px solid rgba(0,0,0,0.18)";
+        b.style.backgroundColor = "rgba(255,255,255,0.75)";
+        b.style.cursor = "pointer";
+        b.style.fontFamily = "inherit";
+      });
+    }
+
+    function updateLabels() {
+      wpmLabel.textContent = String(wpm.value);
+      commaLabel.textContent = String(commaPause.value);
+      periodLabel.textContent = String(periodPause.value);
+    }
+
+    textInput.addEventListener("input", rebuildWordsFromInput);
+
+    wpm.addEventListener("input", () => {
+      updateLabels();
+      if (isPlaying) {
+        start();
+      }
+    });
+
+    commaPause.addEventListener("input", () => {
+      updateLabels();
+    });
+
+    periodPause.addEventListener("input", () => {
+      updateLabels();
+    });
+
+    skipParen.addEventListener("change", rebuildWordsFromInput);
+
+    playBtn.addEventListener("click", start);
+    pauseBtn.addEventListener("click", stop);
+    resetBtn.addEventListener("click", reset);
+    prevBtn.addEventListener("click", stepPrev);
+    nextBtn.addEventListener("click", stepNext);
+
+    clearFile.addEventListener("click", () => {
+      fileInput.value = "";
+      textInput.value = "";
+      rebuildWordsFromInput();
+    });
+
+    fileInput.addEventListener("change", () => {
+      const f = fileInput.files && fileInput.files[0];
+      if (!f) return;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        const text = String(reader.result || "");
+        textInput.value = text;
+        rebuildWordsFromInput();
+      };
+      reader.readAsText(f);
+    });
+
+    readerPos.addEventListener("change", applyStyles);
+    size.addEventListener("input", () => {
+      sizeLabel.textContent = String(size.value);
+      applyStyles();
+    });
+
+    textColor.addEventListener("input", applyStyles);
+    bgColor.addEventListener("input", applyStyles);
+    font.addEventListener("change", applyStyles);
+    align.addEventListener("change", applyStyles);
+
+    window.addEventListener("keydown", (e) => {
+      if (e.code === "Space") {
+        e.preventDefault();
+        if (isPlaying) stop();
+        else start();
+        return;
+      }
+
+      if (e.code === "ArrowLeft") {
+        stepPrev();
+        return;
+      }
+
+      if (e.code === "ArrowRight") {
+        stepNext();
+        return;
+      }
+
+      if (e.code === "Escape") {
+        stop();
+        return;
+      }
+    });
+
+    updateLabels();
+    applyStyles();
+    rebuildWordsFromInput();
+  </script>
 </body>
 </html>
