@@ -12,7 +12,6 @@
       --panel: rgba(255,255,255,0.55);
       --panel2: rgba(255,255,255,0.65);
       --line: rgba(0,0,0,0.14);
-      --accent:#111;
       --muted: rgba(0,0,0,0.72);
     }
 
@@ -31,7 +30,6 @@
       flex-direction: column;
     }
 
-    /* Reader stage */
     #stage{
       flex: 1;
       padding: 24px;
@@ -64,7 +62,6 @@
       font-size: 64px;
     }
 
-    /* Context line mode */
     #contextWrap{
       border: 1px solid var(--line);
       background: rgba(255,255,255,0.35);
@@ -109,7 +106,6 @@
       transform: translateX(-1px);
     }
 
-    /* Controls area */
     #controls{
       padding: 16px;
       background: var(--panel);
@@ -212,7 +208,6 @@
       align-items: center;
     }
 
-    /* Big Play button */
     #play{
       padding: 12px 18px;
       border-radius: 14px;
@@ -227,7 +222,6 @@
       opacity: 0.8;
     }
 
-    /* Hide controls mode */
     body.hideControls #controls{
       display:none;
     }
@@ -244,7 +238,6 @@
       background: rgba(255,255,255,0.18);
     }
 
-    /* Contrast presets */
     body.contrast-dark{
       --bg:#000000;
       --ink:#ffffff;
@@ -252,7 +245,6 @@
       --panel2: rgba(255,255,255,0.08);
       --line: rgba(255,255,255,0.22);
       --muted: rgba(255,255,255,0.75);
-      --accent:#ffffff;
     }
 
     body.contrast-cream{
@@ -262,7 +254,6 @@
       --panel2: rgba(255,248,214,0.06);
       --line: rgba(255,248,214,0.22);
       --muted: rgba(255,248,214,0.72);
-      --accent:#fff8d6;
     }
 
     body.contrast-blue{
@@ -272,10 +263,8 @@
       --panel2: rgba(233,247,255,0.08);
       --line: rgba(233,247,255,0.22);
       --muted: rgba(233,247,255,0.75);
-      --accent:#e9f7ff;
     }
 
-    /* Responsive */
     @media (max-width: 980px){
       #controlsInner{
         grid-template-columns: 1fr;
@@ -323,13 +312,13 @@
           </div>
 
           <div class="row">
-            <div>Comma pause ms <strong id="commaLabel">120</strong></div>
-            <input id="commaPause" type="range" min="0" max="600" value="120">
+            <div>Comma pause ms <strong id="commaLabel">150</strong></div>
+            <input id="commaPause" type="range" min="0" max="600" value="150">
           </div>
 
           <div class="row">
-            <div>Period pause ms <strong id="periodLabel">220</strong></div>
-            <input id="periodPause" type="range" min="0" max="1200" value="220">
+            <div>Period pause ms <strong id="periodLabel">400</strong></div>
+            <input id="periodPause" type="range" min="0" max="1200" value="400">
           </div>
 
           <div class="row">
@@ -428,22 +417,51 @@
     }
 
     function normalizeSpaces(text) {
-      return (text || "").replace(/\\s+/g, " ").trim();
+      return (text || "").replace(/\s+/g, " ").trim();
+    }
+
+    function fixPunctuationSpacing(text) {
+      let t = text || "";
+      t = t.replace(/\s+([,.;:!?])/g, "$1");
+      t = t.replace(/\s+([)\]»”’])/g, "$1");
+      t = t.replace(/([([«“‘])\s+/g, "$1");
+      return t;
     }
 
     function removeParenContent(text) {
       let t = text || "";
-      t = t.replace(/\\([^)]*\\)/g, " ");
-      t = t.replace(/\\[[^\\]]*\\]/g, " ");
+      t = t.replace(/\([^)]*\)/g, " ");
+      t = t.replace(/\[[^\]]*\]/g, " ");
       return t;
     }
 
+    function isPunctOnly(tok) {
+      return /^[,.;:!?]+$/.test(tok);
+    }
+
+    function mergePunctTokens(tokens) {
+      const out = [];
+      for (let i = 0; i < tokens.length; i += 1) {
+        const tok = tokens[i];
+        if (isPunctOnly(tok) && out.length) {
+          out[out.length - 1] = out[out.length - 1] + tok;
+        } else {
+          out.push(tok);
+        }
+      }
+      return out;
+    }
+
     function tokenize(text, skipParen) {
-      let t = normalizeSpaces(text);
+      let t = text || "";
+      t = normalizeSpaces(t);
       if (skipParen) t = removeParenContent(t);
       t = normalizeSpaces(t);
+      t = fixPunctuationSpacing(t);
+      t = normalizeSpaces(t);
       if (!t) return [];
-      return t.split(" ").filter(Boolean);
+      const raw = t.split(" ").filter(Boolean);
+      return mergePunctTokens(raw);
     }
 
     function endsWithAny(word, chars) {
@@ -676,7 +694,7 @@
       const style = window.getComputedStyle(el);
       const matrix = style.transform;
       if (!matrix || matrix === "none") return 0;
-      const parts = matrix.match(/matrix\\(([^)]+)\\)/);
+      const parts = matrix.match(/matrix\(([^)]+)\)/);
       if (!parts) return 0;
       const nums = parts[1].split(",").map(s => Number(s.trim()));
       if (nums.length < 6) return 0;
