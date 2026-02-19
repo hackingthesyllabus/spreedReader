@@ -2,18 +2,306 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Speed Reader</title>
+
+  <style>
+    :root{
+      --bg:#f6f4ee;
+      --ink:#111;
+      --panel: rgba(255,255,255,0.55);
+      --panel2: rgba(255,255,255,0.65);
+      --line: rgba(0,0,0,0.14);
+      --accent:#111;
+      --muted: rgba(0,0,0,0.72);
+    }
+
+    *{ box-sizing:border-box; }
+
+    body{
+      margin:0;
+      font-family: system-ui, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+    }
+
+    #app{
+      min-height: 100vh;
+      display:flex;
+      flex-direction: column;
+    }
+
+    /* Reader stage */
+    #stage{
+      flex: 1;
+      padding: 24px;
+      display:flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    #stage.upper{ padding-top: 64px; }
+    #stage.top{ padding-top: 24px; }
+    #stage.middle{
+      align-items: center;
+      padding-top: 24px;
+    }
+
+    #readerBox{
+      width: min(1200px, 92vw);
+      display: grid;
+      gap: 14px;
+    }
+
+    #word{
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1;
+      user-select: none;
+      text-align: center;
+      max-width: 92vw;
+      margin: 0 auto;
+      font-size: 64px;
+    }
+
+    /* Context line mode */
+    #contextWrap{
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.35);
+      border-radius: 14px;
+      padding: 14px 14px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    #contextTrack{
+      white-space: nowrap;
+      will-change: transform;
+      transform: translateX(0px);
+      transition: transform 90ms linear;
+      font-size: 22px;
+      line-height: 1.4;
+      color: var(--muted);
+      user-select: none;
+    }
+
+    .ctxWord{
+      display:inline-block;
+      padding: 2px 2px;
+      border-radius: 8px;
+      margin-right: 6px;
+    }
+
+    .ctxCurrent{
+      background: rgba(0,0,0,0.12);
+      color: var(--ink);
+      font-weight: 700;
+    }
+
+    #centerGuide{
+      pointer-events: none;
+      position:absolute;
+      top: 0;
+      bottom: 0;
+      left: 50%;
+      width: 2px;
+      background: rgba(0,0,0,0.08);
+      transform: translateX(-1px);
+    }
+
+    /* Controls area */
+    #controls{
+      padding: 16px;
+      background: var(--panel);
+      border-top: 1px solid var(--line);
+    }
+
+    #controlsInner{
+      display:grid;
+      grid-template-columns: 1fr 420px;
+      gap: 16px;
+      align-items: start;
+    }
+
+    .panel{
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    .panelTitle{
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    textarea{
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: var(--panel2);
+      font: inherit;
+      font-size: 14px;
+      line-height: 1.4;
+      resize: vertical;
+    }
+
+    #fileRow{
+      display:flex;
+      gap: 8px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    #hint{
+      margin-top: 10px;
+      font-size: 12px;
+      opacity: 0.75;
+    }
+
+    .row{
+      display:grid;
+      gap: 6px;
+      margin-top: 10px;
+      font-size: 12px;
+      opacity: 0.95;
+    }
+
+    .row2{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+      font-size: 12px;
+      opacity: 0.95;
+      align-items: end;
+    }
+
+    select{
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.75);
+      font: inherit;
+    }
+
+    input[type="range"], input[type="color"]{
+      font: inherit;
+    }
+
+    button{
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(0,0,0,0.18);
+      background: rgba(255,255,255,0.75);
+      cursor: pointer;
+      font: inherit;
+    }
+
+    button:hover{
+      background: rgba(255,255,255,0.95);
+    }
+
+    .btnRow{
+      display:flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+      align-items: center;
+    }
+
+    /* Big Play button */
+    #play{
+      padding: 12px 18px;
+      border-radius: 14px;
+      font-weight: 900;
+      font-size: 16px;
+      border: 1px solid rgba(0,0,0,0.22);
+    }
+
+    #meta{
+      margin-top: 10px;
+      font-size: 12px;
+      opacity: 0.8;
+    }
+
+    /* Hide controls mode */
+    body.hideControls #controls{
+      display:none;
+    }
+    body.hideControls #stage{
+      padding: 24px;
+    }
+    body.hideControls #stage.upper{
+      padding-top: 72px;
+    }
+    body.hideControls #readerBox{
+      width: min(1400px, 94vw);
+    }
+    body.hideControls #contextWrap{
+      background: rgba(255,255,255,0.18);
+    }
+
+    /* Contrast presets */
+    body.contrast-dark{
+      --bg:#000000;
+      --ink:#ffffff;
+      --panel: rgba(255,255,255,0.10);
+      --panel2: rgba(255,255,255,0.08);
+      --line: rgba(255,255,255,0.22);
+      --muted: rgba(255,255,255,0.75);
+      --accent:#ffffff;
+    }
+
+    body.contrast-cream{
+      --bg:#0b0b0b;
+      --ink:#fff8d6;
+      --panel: rgba(255,248,214,0.08);
+      --panel2: rgba(255,248,214,0.06);
+      --line: rgba(255,248,214,0.22);
+      --muted: rgba(255,248,214,0.72);
+      --accent:#fff8d6;
+    }
+
+    body.contrast-blue{
+      --bg:#001018;
+      --ink:#e9f7ff;
+      --panel: rgba(233,247,255,0.10);
+      --panel2: rgba(233,247,255,0.08);
+      --line: rgba(233,247,255,0.22);
+      --muted: rgba(233,247,255,0.75);
+      --accent:#e9f7ff;
+    }
+
+    /* Responsive */
+    @media (max-width: 980px){
+      #controlsInner{
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
+
 <body>
   <div id="app">
-    <div id="stage">
-      <div id="word">Paste text below to begin.</div>
+    <div id="stage" class="upper">
+      <div id="readerBox">
+        <div id="word">Paste text below to begin.</div>
+
+        <div id="contextWrap" title="Full text view with the current word highlighted">
+          <div id="centerGuide"></div>
+          <div id="contextTrack"></div>
+        </div>
+      </div>
     </div>
 
     <div id="controls">
       <div id="controlsInner">
-        <div id="leftCol">
-          <div id="labelA">Text input</div>
+
+        <div class="panel">
+          <div class="panelTitle">Text input</div>
           <textarea id="textInput" rows="8">Paste text here. Press Play.</textarea>
 
           <div id="fileRow">
@@ -26,40 +314,48 @@
           </div>
         </div>
 
-        <div id="rightCol">
-          <div id="labelB">Controls</div>
+        <div class="panel">
+          <div class="panelTitle">Controls</div>
 
           <div class="row">
-            <div>Speed WPM <span id="wpmLabel">350</span></div>
-            <input id="wpm" type="range" min="60" max="1200" value="350">
+            <div>Speed WPM <strong id="wpmLabel">150</strong></div>
+            <input id="wpm" type="range" min="60" max="1200" value="150">
           </div>
 
           <div class="row">
-            <div>Comma pause ms <span id="commaLabel">120</span></div>
+            <div>Comma pause ms <strong id="commaLabel">120</strong></div>
             <input id="commaPause" type="range" min="0" max="600" value="120">
           </div>
 
           <div class="row">
-            <div>Period pause ms <span id="periodLabel">220</span></div>
+            <div>Period pause ms <strong id="periodLabel">220</strong></div>
             <input id="periodPause" type="range" min="0" max="1200" value="220">
           </div>
 
           <div class="row">
-            <label id="skipLabel">
+            <label>
               <input id="skipParen" type="checkbox">
-              Skip parentheses content
+              Skip parentheses and brackets content
             </label>
           </div>
 
-          <div id="btnRowA">
+          <div class="row">
+            <label>
+              <input id="contextMode" type="checkbox" checked>
+              Show full text line and highlight current word
+            </label>
+          </div>
+
+          <div class="btnRow">
             <button id="play">Play</button>
             <button id="pause">Pause</button>
             <button id="reset">Reset</button>
           </div>
 
-          <div id="btnRowB">
+          <div class="btnRow">
             <button id="prev">Prev</button>
             <button id="next">Next</button>
+            <button id="hideControls">Hide controls</button>
           </div>
 
           <div id="meta">
@@ -76,7 +372,7 @@
           </div>
 
           <div class="row">
-            <div>Font size <span id="sizeLabel">64</span></div>
+            <div>Font size <strong id="sizeLabel">64</strong></div>
             <input id="size" type="range" min="18" max="120" value="64">
           </div>
 
@@ -96,7 +392,7 @@
             <select id="font">
               <option value="system-ui, Arial" selected>System</option>
               <option value="Georgia, serif">Georgia</option>
-              <option value="Courier New, monospace">Courier</option>
+              <option value="'Courier New', monospace">Courier</option>
             </select>
           </div>
 
@@ -108,6 +404,17 @@
               <option value="right">Right</option>
             </select>
           </div>
+
+          <div class="row">
+            <div>High contrast</div>
+            <select id="contrast">
+              <option value="none" selected>Off</option>
+              <option value="dark">Black and white</option>
+              <option value="cream">Cream on black</option>
+              <option value="blue">Ice on deep blue</option>
+            </select>
+          </div>
+
         </div>
       </div>
     </div>
@@ -121,19 +428,18 @@
     }
 
     function normalizeSpaces(text) {
-      return text.replace(/\s+/g, " ").trim();
+      return (text || "").replace(/\\s+/g, " ").trim();
     }
 
     function removeParenContent(text) {
-      let t = text;
-      t = t.replace(/\([^)]*\)/g, " ");
-      t = t.replace(/\[[^\]]*\]/g, " ");
+      let t = text || "";
+      t = t.replace(/\\([^)]*\\)/g, " ");
+      t = t.replace(/\\[[^\\]]*\\]/g, " ");
       return t;
     }
 
     function tokenize(text, skipParen) {
-      let t = text || "";
-      t = normalizeSpaces(t);
+      let t = normalizeSpaces(text);
       if (skipParen) t = removeParenContent(t);
       t = normalizeSpaces(t);
       if (!t) return [];
@@ -160,12 +466,14 @@
     const periodLabel = document.getElementById("periodLabel");
 
     const skipParen = document.getElementById("skipParen");
+    const contextMode = document.getElementById("contextMode");
 
     const playBtn = document.getElementById("play");
     const pauseBtn = document.getElementById("pause");
     const resetBtn = document.getElementById("reset");
     const prevBtn = document.getElementById("prev");
     const nextBtn = document.getElementById("next");
+    const hideControlsBtn = document.getElementById("hideControls");
 
     const idxLabel = document.getElementById("idxLabel");
     const totalLabel = document.getElementById("totalLabel");
@@ -177,10 +485,12 @@
     const bgColor = document.getElementById("bgColor");
     const font = document.getElementById("font");
     const align = document.getElementById("align");
+    const contrast = document.getElementById("contrast");
 
-    const app = document.getElementById("app");
     const stage = document.getElementById("stage");
     const wordEl = document.getElementById("word");
+    const contextWrap = document.getElementById("contextWrap");
+    const contextTrack = document.getElementById("contextTrack");
 
     let words = [];
     let idx = 0;
@@ -194,15 +504,8 @@
 
     function extraPauseMs(word) {
       if (!word) return 0;
-
-      if (endsWithAny(word, ",;:")) {
-        return Number(commaPause.value) || 0;
-      }
-
-      if (endsWithAny(word, ".!?")) {
-        return Number(periodPause.value) || 0;
-      }
-
+      if (endsWithAny(word, ",;:")) return Number(commaPause.value) || 0;
+      if (endsWithAny(word, ".!?")) return Number(periodPause.value) || 0;
       return 0;
     }
 
@@ -212,12 +515,11 @@
     }
 
     function renderWord() {
-      if (!words.length) {
-        wordEl.textContent = "Paste text below to begin.";
-      } else {
-        wordEl.textContent = words[idx] || "";
-      }
+      if (!words.length) wordEl.textContent = "Paste text below to begin.";
+      else wordEl.textContent = words[idx] || "";
       updateMeta();
+      renderContext();
+      centerCurrentWordInContext();
     }
 
     function stop() {
@@ -240,12 +542,14 @@
 
       timer = setTimeout(() => {
         if (!isPlaying) return;
+
         if (idx >= last) {
           idx = last;
           renderWord();
           stop();
           return;
         }
+
         idx += 1;
         renderWord();
         scheduleNext();
@@ -284,167 +588,138 @@
       renderWord();
     }
 
-    function applyStyles() {
-      document.body.style.margin = "0";
-      document.body.style.fontFamily = font.value;
-      document.body.style.backgroundColor = bgColor.value;
-      document.body.style.color = textColor.value;
-
-      app.style.minHeight = "100vh";
-      app.style.display = "flex";
-      app.style.flexDirection = "column";
-
-      stage.style.display = "flex";
-      stage.style.padding = "24px";
-      stage.style.flex = "1";
-
-      if (readerPos.value === "top") stage.style.alignItems = "flexStart";
-      if (readerPos.value === "upper") stage.style.alignItems = "flexStart";
-      if (readerPos.value === "middle") stage.style.alignItems = "center";
-
-      stage.style.justifyContent = align.value === "left" ? "flexStart" : align.value === "right" ? "flexEnd" : "center";
-
-      if (readerPos.value === "top") stage.style.paddingTop = "24px";
-      if (readerPos.value === "upper") stage.style.paddingTop = "64px";
-      if (readerPos.value === "middle") stage.style.paddingTop = "24px";
-
-      wordEl.style.fontSize = String(size.value) + "px";
-      wordEl.style.fontWeight = "700";
-      wordEl.style.lineHeight = "1";
-      wordEl.style.maxWidth = "90vw";
-      wordEl.style.userSelect = "none";
-      wordEl.style.textAlign = align.value;
-      wordEl.style.color = textColor.value;
-
-      sizeLabel.textContent = String(size.value);
-
-      const controls = document.getElementById("controls");
-      const controlsInner = document.getElementById("controlsInner");
-      const leftCol = document.getElementById("leftCol");
-      const rightCol = document.getElementById("rightCol");
-
-      controls.style.padding = "16px";
-      controls.style.backgroundColor = "rgba(255,255,255,0.55)";
-      controls.style.borderTop = "1px solid rgba(0,0,0,0.14)";
-
-      controlsInner.style.display = "grid";
-      controlsInner.style.gridTemplateColumns = "1fr 420px";
-      controlsInner.style.gap = "16px";
-      controlsInner.style.alignItems = "start";
-
-      leftCol.style.backgroundColor = "rgba(255,255,255,0.55)";
-      leftCol.style.border = "1px solid rgba(0,0,0,0.14)";
-      leftCol.style.borderRadius = "12px";
-      leftCol.style.padding = "12px";
-
-      rightCol.style.backgroundColor = "rgba(255,255,255,0.55)";
-      rightCol.style.border = "1px solid rgba(0,0,0,0.14)";
-      rightCol.style.borderRadius = "12px";
-      rightCol.style.padding = "12px";
-
-      const labelA = document.getElementById("labelA");
-      const labelB = document.getElementById("labelB");
-      labelA.style.fontWeight = "700";
-      labelA.style.marginBottom = "8px";
-      labelB.style.fontWeight = "700";
-      labelB.style.marginBottom = "8px";
-
-      textInput.style.width = "100%";
-      textInput.style.padding = "12px";
-      textInput.style.borderRadius = "10px";
-      textInput.style.border = "1px solid rgba(0,0,0,0.14)";
-      textInput.style.backgroundColor = "rgba(255,255,255,0.65)";
-      textInput.style.fontSize = "14px";
-      textInput.style.lineHeight = "1.4";
-      textInput.style.fontFamily = "inherit";
-
-      const fileRow = document.getElementById("fileRow");
-      fileRow.style.display = "flex";
-      fileRow.style.gap = "8px";
-      fileRow.style.marginTop = "10px";
-      fileRow.style.flexWrap = "wrap";
-
-      const hint = document.getElementById("hint");
-      hint.style.marginTop = "10px";
-      hint.style.fontSize = "12px";
-      hint.style.opacity = "0.75";
-
-      const btnRowA = document.getElementById("btnRowA");
-      const btnRowB = document.getElementById("btnRowB");
-      btnRowA.style.display = "flex";
-      btnRowA.style.gap = "8px";
-      btnRowA.style.flexWrap = "wrap";
-      btnRowA.style.marginTop = "10px";
-      btnRowB.style.display = "flex";
-      btnRowB.style.gap = "8px";
-      btnRowB.style.flexWrap = "wrap";
-      btnRowB.style.marginTop = "8px";
-
-      const meta = document.getElementById("meta");
-      meta.style.marginTop = "10px";
-      meta.style.fontSize = "12px";
-      meta.style.opacity = "0.8";
-
-      const rows = Array.from(document.querySelectorAll(".row"));
-      rows.forEach(r => {
-        r.style.display = "grid";
-        r.style.gap = "6px";
-        r.style.marginTop = "10px";
-        r.style.fontSize = "12px";
-        r.style.opacity = "0.9";
-      });
-
-      const row2 = Array.from(document.querySelectorAll(".row2"));
-      row2.forEach(r => {
-        r.style.display = "grid";
-        r.style.gridTemplateColumns = "1fr 1fr";
-        r.style.gap = "10px";
-        r.style.marginTop = "10px";
-        r.style.fontSize = "12px";
-        r.style.opacity = "0.9";
-      });
-
-      const buttons = Array.from(document.querySelectorAll("button"));
-      buttons.forEach(b => {
-        b.style.padding = "8px 10px";
-        b.style.borderRadius = "10px";
-        b.style.border = "1px solid rgba(0,0,0,0.18)";
-        b.style.backgroundColor = "rgba(255,255,255,0.75)";
-        b.style.cursor = "pointer";
-        b.style.fontFamily = "inherit";
-      });
-    }
-
     function updateLabels() {
       wpmLabel.textContent = String(wpm.value);
       commaLabel.textContent = String(commaPause.value);
       periodLabel.textContent = String(periodPause.value);
+      sizeLabel.textContent = String(size.value);
+    }
+
+    function applyTheme() {
+      document.body.classList.remove("contrast-dark", "contrast-cream", "contrast-blue");
+      if (contrast.value === "dark") document.body.classList.add("contrast-dark");
+      if (contrast.value === "cream") document.body.classList.add("contrast-cream");
+      if (contrast.value === "blue") document.body.classList.add("contrast-blue");
+    }
+
+    function applyStyles() {
+      applyTheme();
+
+      document.body.style.fontFamily = font.value;
+
+      if (contrast.value === "none") {
+        document.body.style.backgroundColor = bgColor.value;
+        document.body.style.color = textColor.value;
+      } else {
+        document.body.style.backgroundColor = "";
+        document.body.style.color = "";
+      }
+
+      wordEl.style.fontFamily = font.value;
+      wordEl.style.fontSize = String(size.value) + "px";
+      wordEl.style.textAlign = align.value;
+
+      if (contrast.value === "none") {
+        wordEl.style.color = textColor.value;
+      } else {
+        wordEl.style.color = "";
+      }
+
+      stage.classList.remove("top", "upper", "middle");
+      stage.classList.add(readerPos.value);
+
+      contextWrap.style.display = contextMode.checked ? "block" : "none";
+    }
+
+    function renderContext() {
+      if (!contextMode.checked) return;
+
+      if (!words.length) {
+        contextTrack.innerHTML = "";
+        return;
+      }
+
+      const start = clamp(idx - 25, 0, Math.max(0, words.length - 1));
+      const end = clamp(idx + 25, 0, Math.max(0, words.length - 1));
+
+      let html = "";
+      for (let i = start; i <= end; i += 1) {
+        const safe = escapeHtml(words[i]);
+        const cls = i === idx ? "ctxWord ctxCurrent" : "ctxWord";
+        html += `<span class="${cls}" data-i="${i}">${safe}</span>`;
+      }
+      contextTrack.innerHTML = html;
+    }
+
+    function centerCurrentWordInContext() {
+      if (!contextMode.checked) return;
+      if (!words.length) return;
+
+      const currentEl = contextTrack.querySelector(".ctxCurrent");
+      if (!currentEl) return;
+
+      const wrapRect = contextWrap.getBoundingClientRect();
+      const wordRect = currentEl.getBoundingClientRect();
+
+      const wrapCenter = wrapRect.left + (wrapRect.width / 2);
+      const wordCenter = wordRect.left + (wordRect.width / 2);
+
+      const delta = wrapCenter - wordCenter;
+
+      const currentTransform = getTranslateX(contextTrack);
+      const next = currentTransform + delta;
+
+      contextTrack.style.transform = `translateX(${Math.round(next)}px)`;
+    }
+
+    function getTranslateX(el) {
+      const style = window.getComputedStyle(el);
+      const matrix = style.transform;
+      if (!matrix || matrix === "none") return 0;
+      const parts = matrix.match(/matrix\\(([^)]+)\\)/);
+      if (!parts) return 0;
+      const nums = parts[1].split(",").map(s => Number(s.trim()));
+      if (nums.length < 6) return 0;
+      return nums[4] || 0;
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
     }
 
     textInput.addEventListener("input", rebuildWordsFromInput);
 
     wpm.addEventListener("input", () => {
       updateLabels();
-      if (isPlaying) {
-        start();
-      }
+      if (isPlaying) start();
     });
 
-    commaPause.addEventListener("input", () => {
-      updateLabels();
-    });
-
-    periodPause.addEventListener("input", () => {
-      updateLabels();
-    });
+    commaPause.addEventListener("input", () => updateLabels());
+    periodPause.addEventListener("input", () => updateLabels());
 
     skipParen.addEventListener("change", rebuildWordsFromInput);
+
+    contextMode.addEventListener("change", () => {
+      applyStyles();
+      renderWord();
+    });
 
     playBtn.addEventListener("click", start);
     pauseBtn.addEventListener("click", stop);
     resetBtn.addEventListener("click", reset);
     prevBtn.addEventListener("click", stepPrev);
     nextBtn.addEventListener("click", stepNext);
+
+    hideControlsBtn.addEventListener("click", () => {
+      const hidden = document.body.classList.toggle("hideControls");
+      hideControlsBtn.textContent = hidden ? "Show controls" : "Hide controls";
+      centerCurrentWordInContext();
+    });
 
     clearFile.addEventListener("click", () => {
       fileInput.value = "";
@@ -458,23 +733,36 @@
 
       const reader = new FileReader();
       reader.onload = () => {
-        const text = String(reader.result || "");
-        textInput.value = text;
+        textInput.value = String(reader.result || "");
         rebuildWordsFromInput();
       };
       reader.readAsText(f);
     });
 
-    readerPos.addEventListener("change", applyStyles);
-    size.addEventListener("input", () => {
-      sizeLabel.textContent = String(size.value);
+    readerPos.addEventListener("change", () => {
       applyStyles();
+      centerCurrentWordInContext();
+    });
+
+    size.addEventListener("input", () => {
+      updateLabels();
+      applyStyles();
+      centerCurrentWordInContext();
     });
 
     textColor.addEventListener("input", applyStyles);
     bgColor.addEventListener("input", applyStyles);
     font.addEventListener("change", applyStyles);
-    align.addEventListener("change", applyStyles);
+
+    align.addEventListener("change", () => {
+      applyStyles();
+      centerCurrentWordInContext();
+    });
+
+    contrast.addEventListener("change", () => {
+      applyStyles();
+      centerCurrentWordInContext();
+    });
 
     window.addEventListener("keydown", (e) => {
       if (e.code === "Space") {
@@ -483,19 +771,22 @@
         else start();
         return;
       }
-
       if (e.code === "ArrowLeft") {
         stepPrev();
         return;
       }
-
       if (e.code === "ArrowRight") {
         stepNext();
         return;
       }
-
       if (e.code === "Escape") {
         stop();
+        return;
+      }
+      if (e.key === "h" || e.key === "H") {
+        const hidden = document.body.classList.toggle("hideControls");
+        hideControlsBtn.textContent = hidden ? "Show controls" : "Hide controls";
+        centerCurrentWordInContext();
         return;
       }
     });
