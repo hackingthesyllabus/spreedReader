@@ -62,50 +62,6 @@
       font-size: 64px;
     }
 
-    #contextWrap{
-      border: 1px solid var(--line);
-      background: rgba(255,255,255,0.35);
-      border-radius: 14px;
-      padding: 14px 14px;
-      overflow: hidden;
-      position: relative;
-    }
-
-    #contextTrack{
-      white-space: nowrap;
-      will-change: transform;
-      transform: translateX(0px);
-      transition: transform 90ms linear;
-      font-size: 22px;
-      line-height: 1.4;
-      color: var(--muted);
-      user-select: none;
-    }
-
-    .ctxWord{
-      display:inline-block;
-      padding: 2px 2px;
-      border-radius: 8px;
-      margin-right: 6px;
-    }
-
-    .ctxCurrent{
-      background: rgba(0,0,0,0.12);
-      color: var(--ink);
-      font-weight: 700;
-    }
-
-    #centerGuide{
-      pointer-events: none;
-      position:absolute;
-      top: 0;
-      bottom: 0;
-      left: 50%;
-      width: 2px;
-      background: rgba(0,0,0,0.08);
-      transform: translateX(-1px);
-    }
-
     #controls{
       padding: 16px;
       background: var(--panel);
@@ -234,9 +190,6 @@
     body.hideControls #readerBox{
       width: min(1400px, 94vw);
     }
-    body.hideControls #contextWrap{
-      background: rgba(255,255,255,0.18);
-    }
 
     body.contrast-dark{
       --bg:#000000;
@@ -278,11 +231,6 @@
     <div id="stage" class="upper">
       <div id="readerBox">
         <div id="word">Paste text below to begin.</div>
-
-        <div id="contextWrap" title="Full text view with the current word highlighted">
-          <div id="centerGuide"></div>
-          <div id="contextTrack"></div>
-        </div>
       </div>
     </div>
 
@@ -299,7 +247,7 @@
           </div>
 
           <div id="hint">
-            Hotkeys. Space toggles play. Left and right step. Escape stops.
+            Hotkeys. Space toggles play. Left and right step. Escape stops. H hides controls.
           </div>
         </div>
 
@@ -325,13 +273,6 @@
             <label>
               <input id="skipParen" type="checkbox">
               Skip parentheses and brackets content
-            </label>
-          </div>
-
-          <div class="row">
-            <label>
-              <input id="contextMode" type="checkbox" checked>
-              Show full text line and highlight current word
             </label>
           </div>
 
@@ -484,7 +425,6 @@
     const periodLabel = document.getElementById("periodLabel");
 
     const skipParen = document.getElementById("skipParen");
-    const contextMode = document.getElementById("contextMode");
 
     const playBtn = document.getElementById("play");
     const pauseBtn = document.getElementById("pause");
@@ -507,8 +447,6 @@
 
     const stage = document.getElementById("stage");
     const wordEl = document.getElementById("word");
-    const contextWrap = document.getElementById("contextWrap");
-    const contextTrack = document.getElementById("contextTrack");
 
     let words = [];
     let idx = 0;
@@ -536,8 +474,6 @@
       if (!words.length) wordEl.textContent = "Paste text below to begin.";
       else wordEl.textContent = words[idx] || "";
       updateMeta();
-      renderContext();
-      centerCurrentWordInContext();
     }
 
     function stop() {
@@ -645,69 +581,6 @@
 
       stage.classList.remove("top", "upper", "middle");
       stage.classList.add(readerPos.value);
-
-      contextWrap.style.display = contextMode.checked ? "block" : "none";
-    }
-
-    function renderContext() {
-      if (!contextMode.checked) return;
-
-      if (!words.length) {
-        contextTrack.innerHTML = "";
-        return;
-      }
-
-      const start = clamp(idx - 25, 0, Math.max(0, words.length - 1));
-      const end = clamp(idx + 25, 0, Math.max(0, words.length - 1));
-
-      let html = "";
-      for (let i = start; i <= end; i += 1) {
-        const safe = escapeHtml(words[i]);
-        const cls = i === idx ? "ctxWord ctxCurrent" : "ctxWord";
-        html += `<span class="${cls}" data-i="${i}">${safe}</span>`;
-      }
-      contextTrack.innerHTML = html;
-    }
-
-    function centerCurrentWordInContext() {
-      if (!contextMode.checked) return;
-      if (!words.length) return;
-
-      const currentEl = contextTrack.querySelector(".ctxCurrent");
-      if (!currentEl) return;
-
-      const wrapRect = contextWrap.getBoundingClientRect();
-      const wordRect = currentEl.getBoundingClientRect();
-
-      const wrapCenter = wrapRect.left + (wrapRect.width / 2);
-      const wordCenter = wordRect.left + (wordRect.width / 2);
-
-      const delta = wrapCenter - wordCenter;
-
-      const currentTransform = getTranslateX(contextTrack);
-      const next = currentTransform + delta;
-
-      contextTrack.style.transform = `translateX(${Math.round(next)}px)`;
-    }
-
-    function getTranslateX(el) {
-      const style = window.getComputedStyle(el);
-      const matrix = style.transform;
-      if (!matrix || matrix === "none") return 0;
-      const parts = matrix.match(/matrix\(([^)]+)\)/);
-      if (!parts) return 0;
-      const nums = parts[1].split(",").map(s => Number(s.trim()));
-      if (nums.length < 6) return 0;
-      return nums[4] || 0;
-    }
-
-    function escapeHtml(s) {
-      return String(s)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
     }
 
     textInput.addEventListener("input", rebuildWordsFromInput);
@@ -722,11 +595,6 @@
 
     skipParen.addEventListener("change", rebuildWordsFromInput);
 
-    contextMode.addEventListener("change", () => {
-      applyStyles();
-      renderWord();
-    });
-
     playBtn.addEventListener("click", start);
     pauseBtn.addEventListener("click", stop);
     resetBtn.addEventListener("click", reset);
@@ -736,7 +604,6 @@
     hideControlsBtn.addEventListener("click", () => {
       const hidden = document.body.classList.toggle("hideControls");
       hideControlsBtn.textContent = hidden ? "Show controls" : "Hide controls";
-      centerCurrentWordInContext();
     });
 
     clearFile.addEventListener("click", () => {
@@ -757,30 +624,18 @@
       reader.readAsText(f);
     });
 
-    readerPos.addEventListener("change", () => {
-      applyStyles();
-      centerCurrentWordInContext();
-    });
+    readerPos.addEventListener("change", applyStyles);
 
     size.addEventListener("input", () => {
       updateLabels();
       applyStyles();
-      centerCurrentWordInContext();
     });
 
     textColor.addEventListener("input", applyStyles);
     bgColor.addEventListener("input", applyStyles);
     font.addEventListener("change", applyStyles);
-
-    align.addEventListener("change", () => {
-      applyStyles();
-      centerCurrentWordInContext();
-    });
-
-    contrast.addEventListener("change", () => {
-      applyStyles();
-      centerCurrentWordInContext();
-    });
+    align.addEventListener("change", applyStyles);
+    contrast.addEventListener("change", applyStyles);
 
     window.addEventListener("keydown", (e) => {
       if (e.code === "Space") {
@@ -804,7 +659,6 @@
       if (e.key === "h" || e.key === "H") {
         const hidden = document.body.classList.toggle("hideControls");
         hideControlsBtn.textContent = hidden ? "Show controls" : "Hide controls";
-        centerCurrentWordInContext();
         return;
       }
     });
