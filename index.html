@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Speed Reader</title>
 
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
+
   <style>
     :root{
       --bg:#f6f4ee;
@@ -12,6 +16,7 @@
       --panel: rgba(255,255,255,0.55);
       --panel2: rgba(255,255,255,0.65);
       --line: rgba(0,0,0,0.14);
+      --focus:#e53935;
     }
 
     *{ box-sizing:border-box; }
@@ -37,9 +42,9 @@
       align-items: flex-start;
     }
 
-    #stageUpper{ padding-top: 64px; }
-    #stageTop{ padding-top: 24px; }
-    #stageMiddle{
+    .stageUpper{ padding-top: 64px; }
+    .stageTop{ padding-top: 24px; }
+    .stageMiddle{
       align-items: center;
       padding-top: 24px;
     }
@@ -59,6 +64,15 @@
       max-width: 92vw;
       margin: 0 auto;
       font-size: 64px;
+    }
+
+    .wLeft, .wRight, .wFocus{
+      display:inline-block;
+      white-space: pre;
+    }
+
+    .wFocus{
+      color: var(--focus);
     }
 
     #controls{
@@ -173,10 +187,6 @@
       display:none;
     }
 
-    body.hideControls #stage{
-      padding: 24px;
-    }
-
     #fileBox{
       margin-top: 10px;
       padding: 10px;
@@ -276,6 +286,29 @@
             </label>
           </div>
 
+          <div class="row">
+            <label>
+              <input id="focusMode" type="checkbox" checked>
+              Focus letter mode
+            </label>
+          </div>
+
+          <div class="row2">
+            <label>
+              Focus letter colour
+              <input id="focusColor" type="color" value="#e53935">
+            </label>
+            <label>
+              Font
+              <select id="font">
+                <option value="Montserrat, system-ui, Arial" selected>Montserrat</option>
+                <option value="system-ui, Arial">System</option>
+                <option value="Georgia, serif">Georgia</option>
+                <option value="'Courier New', monospace">Courier</option>
+              </select>
+            </label>
+          </div>
+
           <div class="btnRow">
             <button id="play">Play</button>
             <button id="pause">Pause</button>
@@ -318,15 +351,6 @@
           </div>
 
           <div class="row">
-            <div>Font</div>
-            <select id="font">
-              <option value="system-ui, Arial" selected>System</option>
-              <option value="Georgia, serif">Georgia</option>
-              <option value="'Courier New', monospace">Courier</option>
-            </select>
-          </div>
-
-          <div class="row">
             <div>Align</div>
             <select id="align">
               <option value="left">Left</option>
@@ -334,6 +358,7 @@
               <option value="right">Right</option>
             </select>
           </div>
+
         </div>
 
       </div>
@@ -402,6 +427,50 @@
       return chars.indexOf(last) >= 0;
     }
 
+    function escapeHtml(s) {
+      return String(s)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function computeOrpIndex(coreLen) {
+      if (coreLen <= 1) return 0;
+      if (coreLen <= 5) return 1;
+      if (coreLen <= 9) return 2;
+      if (coreLen <= 13) return 3;
+      return 4;
+    }
+
+    function splitWordForFocus(word) {
+      const w = String(word || "");
+      if (!w) return { left: "", focus: "", right: "" };
+
+      const m = w.match(/^([^A-Za-z0-9]*)([A-Za-z0-9]+)([^A-Za-z0-9]*)$/);
+      if (!m) {
+        const idx0 = clamp(Math.floor(w.length / 2), 0, Math.max(0, w.length - 1));
+        return {
+          left: w.slice(0, idx0),
+          focus: w.slice(idx0, idx0 + 1),
+          right: w.slice(idx0 + 1)
+        };
+      }
+
+      const lead = m[1] || "";
+      const core = m[2] || "";
+      const trail = m[3] || "";
+
+      const orp = clamp(computeOrpIndex(core.length), 0, Math.max(0, core.length - 1));
+
+      const left = lead + core.slice(0, orp);
+      const focus = core.slice(orp, orp + 1);
+      const right = core.slice(orp + 1) + trail;
+
+      return { left, focus, right };
+    }
+
     const textInput = document.getElementById("textInput");
     const fileInput = document.getElementById("fileInput");
     const clearFile = document.getElementById("clearFile");
@@ -421,6 +490,8 @@
     const periodLabel = document.getElementById("periodLabel");
 
     const skipParen = document.getElementById("skipParen");
+    const focusMode = document.getElementById("focusMode");
+    const focusColor = document.getElementById("focusColor");
 
     const playBtn = document.getElementById("play");
     const pauseBtn = document.getElementById("pause");
@@ -470,9 +541,26 @@
     }
 
     function renderWord() {
-      if (!words.length) wordEl.textContent = "Paste text below to begin.";
-      else wordEl.textContent = words[idx] || "";
+      if (!words.length) {
+        wordEl.textContent = "Paste text below to begin.";
+        updateMeta();
+        return;
+      }
+
+      const w = words[idx] || "";
       updateMeta();
+
+      if (!focusMode.checked) {
+        wordEl.textContent = w;
+        return;
+      }
+
+      const parts = splitWordForFocus(w);
+
+      wordEl.innerHTML =
+        `<span class="wLeft">${escapeHtml(parts.left)}</span>` +
+        `<span class="wFocus">${escapeHtml(parts.focus)}</span>` +
+        `<span class="wRight">${escapeHtml(parts.right)}</span>`;
     }
 
     function stop() {
@@ -550,6 +638,8 @@
     }
 
     function applyStyles() {
+      document.documentElement.style.setProperty("--focus", focusColor.value);
+
       document.body.style.fontFamily = font.value;
       document.body.style.backgroundColor = bgColor.value;
       document.body.style.color = textColor.value;
@@ -652,6 +742,15 @@
 
     skipParen.addEventListener("change", rebuildWordsFromInput);
 
+    focusMode.addEventListener("change", () => {
+      renderWord();
+    });
+
+    focusColor.addEventListener("input", () => {
+      applyStyles();
+      renderWord();
+    });
+
     playBtn.addEventListener("click", start);
     pauseBtn.addEventListener("click", stop);
     resetBtn.addEventListener("click", reset);
@@ -671,7 +770,6 @@
     });
 
     trimPercent.addEventListener("input", () => updateLabels());
-    ignoreHeaderFooter.addEventListener("change", () => {});
 
     fileInput.addEventListener("change", async () => {
       const f = fileInput.files && fileInput.files[0];
@@ -689,9 +787,7 @@
           const extracted = await extractPdfText(buf);
 
           if (!extracted || extracted.length < 20) {
-            setStatus(
-              "PDF loaded, but little text was extracted. This PDF may be scanned images. OCR can be added later."
-            );
+            setStatus("PDF loaded, but little text was extracted. This PDF may be scanned images. OCR can be added later.");
           } else {
             setStatus("PDF text extracted. Ready.");
           }
@@ -718,12 +814,28 @@
     size.addEventListener("input", () => {
       updateLabels();
       applyStyles();
+      renderWord();
     });
 
-    textColor.addEventListener("input", applyStyles);
-    bgColor.addEventListener("input", applyStyles);
-    font.addEventListener("change", applyStyles);
-    align.addEventListener("change", applyStyles);
+    textColor.addEventListener("input", () => {
+      applyStyles();
+      renderWord();
+    });
+
+    bgColor.addEventListener("input", () => {
+      applyStyles();
+      renderWord();
+    });
+
+    font.addEventListener("change", () => {
+      applyStyles();
+      renderWord();
+    });
+
+    align.addEventListener("change", () => {
+      applyStyles();
+      renderWord();
+    });
 
     window.addEventListener("keydown", (e) => {
       if (e.code === "Space") {
