@@ -1,0 +1,149 @@
+:root{
+  --bg:#f6f4ee;
+  --ink:#111;
+  --panel: rgba(255,255,255,0.55);
+  --panel2: rgba(255,255,255,0.65);
+  --line: rgba(0,0,0,0.14);
+}
+
+*{ box-sizing:border-box; }
+
+body{
+  margin:0;
+  font-family: system-ui, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.top{
+  padding: 16px 16px 0 16px;
+}
+
+.top h1{
+  margin: 0;
+  font-size: 22px;
+}
+
+.sub{
+  margin: 6px 0 0 0;
+  opacity: 0.75;
+}
+
+.layout{
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  gap: 16px;
+  padding: 16px;
+  align-items: start;
+}
+
+.panel{
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.panel h2{
+  margin: 0 0 10px 0;
+  font-size: 16px;
+}
+
+.label{
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+textarea{
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--panel2);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+  resize: vertical;
+}
+
+.hint{
+  margin-top: 10px;
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.control{
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.row{
+  display:flex;
+  justify-content: space-between;
+  align-items:center;
+}
+
+.buttons{
+  display:flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 8px 0;
+}
+
+button{
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,0.75);
+  cursor: pointer;
+  font: inherit;
+}
+
+button:hover{
+  background: rgba(255,255,255,0.95);
+}
+
+select, input[type="range"], input[type="color"]{
+  font: inherit;
+}
+
+select{
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,0.75);
+}
+
+.meta{
+  font-size: 12px;
+  opacity: 0.8;
+  margin-top: 6px;
+}
+
+.grid2{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.stage{
+  min-height: calc(100vh - 360px);
+  padding: 24px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.word{
+  font-size: 64px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  user-select: none;
+  max-width: 90vw;
+  text-align: center;
+}
