@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Speed Reader</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="top">
+    <h1>Speed Reader</h1>
+    <p class="sub">Paste text. Press Play. Adjust speed and styling.</p>
+  </header>
+
+  <main class="layout">
+    <section class="panel">
+      <label class="label" for="textInput">Text input</label>
+      <textarea id="textInput" rows="10">Paste text here. Press Play.</textarea>
+
+      <div class="hint">
+        Hotkeys: Space play or pause. Left and right step. Esc stops.
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Controls</h2>
+
+      <div class="control">
+        <div class="row">
+          <span>Speed (WPM): <strong id="wpmLabel">350</strong></span>
+        </div>
+        <input id="wpm" type="range" min="60" max="1200" value="350" />
+      </div>
+
+      <div class="buttons">
+        <button id="play">Play</button>
+        <button id="pause">Pause</button>
+        <button id="reset">Reset</button>
+      </div>
+
+      <div class="buttons">
+        <button id="prev">Prev</button>
+        <button id="next">Next</button>
+      </div>
+
+      <div class="meta">
+        Word <span id="idxLabel">0</span> of <span id="totalLabel">0</span>
+      </div>
+
+      <div class="grid2">
+        <label class="label">
+          Font
+          <select id="font">
+            <option value="system-ui, Arial">System</option>
+            <option value="Inter, system-ui, Arial">Inter</option>
+            <option value="Montserrat, system-ui, Arial">Montserrat</option>
+            <option value="Georgia, serif">Georgia</option>
+            <option value="'Courier New', monospace">Courier</option>
+          </select>
+        </label>
+
+        <label class="label">
+          Font size: <span id="sizeLabel">64</span>px
+          <input id="size" type="range" min="18" max="120" value="64" />
+        </label>
+      </div>
+
+      <div class="grid2">
+        <label class="label">
+          Text colour
+          <input id="textColor" type="color" value="#111111" />
+        </label>
+
+        <label class="label">
+          Background
+          <input id="bgColor" type="color" value="#f6f4ee" />
+        </label>
+      </div>
+
+      <div class="grid2">
+        <label class="label">
+          Horizontal
+          <select id="align">
+            <option value="left">Left</option>
+            <option value="center" selected>Center</option>
+            <option value="right">Right</option>
+          </select>
+        </label>
+
+        <label class="label">
+          Vertical
+          <select id="vertical">
+            <option value="top">Top</option>
+            <option value="middle" selected>Middle</option>
+            <option value="bottom">Bottom</option>
+          </select>
+        </label>
+      </div>
+    </section>
+  </main>
+
+  <section id="readerStage" class="stage">
+    <div id="word" class="word">Paste some text to begin.</div>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>
