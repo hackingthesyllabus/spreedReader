@@ -341,6 +341,14 @@
           <div class="panelTitle">Controls</div>
 
           <div class="row">
+            <div>Theme</div>
+            <select id="themeSelect">
+              <option value="teal_dark" selected>Dark Teal</option>
+              <option value="microsoft_modern">Microsoft Modern</option>
+            </select>
+          </div>
+
+          <div class="row">
             <div>Speed WPM <strong id="wpmLabel">175</strong></div>
             <input id="wpm" type="range" min="60" max="1200" value="175">
           </div>
@@ -429,6 +437,39 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.js"></script>
   <script>
+    const THEMES = {
+      teal_dark: {
+        bg: "#2E3047",
+        ink: "#f6f4ee",
+        panel: "#3C3F58",
+        panel2: "#43455C",
+        line: "rgba(255,255,255,0.12)",
+        focus: "#3BBA9C",
+        muted: "#707793",
+        btn: "rgba(255,255,255,0.10)",
+        btnHover: "rgba(255,255,255,0.16)",
+        btnBorder: "rgba(255,255,255,0.20)",
+        pickerText: "#f6f4ee",
+        pickerBg: "#2E3047",
+        pickerFocus: "#3BBA9C"
+      },
+      microsoft_modern: {
+        bg: "#2C2B30",
+        ink: "#D6D6D6",
+        panel: "#4F4F51",
+        panel2: "#4F4F51",
+        line: "rgba(214,214,214,0.18)",
+        focus: "#F58F7C",
+        muted: "#D6D6D6",
+        btn: "rgba(214,214,214,0.10)",
+        btnHover: "rgba(214,214,214,0.16)",
+        btnBorder: "rgba(214,214,214,0.22)",
+        pickerText: "#D6D6D6",
+        pickerBg: "#2C2B30",
+        pickerFocus: "#F58F7C"
+      }
+    };
+
     function clamp(n, min, max) {
       if (n < min) return min;
       if (n > max) return max;
@@ -581,6 +622,8 @@
     const ignoreHeaderFooter = document.getElementById("ignoreHeaderFooter");
     const trimPercent = document.getElementById("trimPercent");
     const trimLabel = document.getElementById("trimLabel");
+
+    const themeSelect = document.getElementById("themeSelect");
 
     const wpm = document.getElementById("wpm");
     const wpmLabel = document.getElementById("wpmLabel");
@@ -782,6 +825,28 @@
       if (readerPos.value === "middle") stage.classList.add("stageMiddle");
     }
 
+    function applyTheme(themeKey) {
+      const t = THEMES[themeKey] || THEMES.teal_dark;
+
+      document.documentElement.style.setProperty("--bg", t.bg);
+      document.documentElement.style.setProperty("--ink", t.ink);
+      document.documentElement.style.setProperty("--panel", t.panel);
+      document.documentElement.style.setProperty("--panel2", t.panel2);
+      document.documentElement.style.setProperty("--line", t.line);
+      document.documentElement.style.setProperty("--focus", t.focus);
+      document.documentElement.style.setProperty("--muted", t.muted);
+      document.documentElement.style.setProperty("--btn", t.btn);
+      document.documentElement.style.setProperty("--btnHover", t.btnHover);
+      document.documentElement.style.setProperty("--btnBorder", t.btnBorder);
+
+      bgColor.value = t.pickerBg;
+      textColor.value = t.pickerText;
+      focusColor.value = t.pickerFocus;
+
+      applyStyles();
+      renderWord();
+    }
+
     async function extractPdfText(arrayBuffer) {
       if (!window.pdfjsLib) throw new Error("PDF library not available.");
 
@@ -880,6 +945,10 @@
     weight.addEventListener("change", () => {
       applyStyles();
       renderWord();
+    });
+
+    themeSelect.addEventListener("change", () => {
+      applyTheme(themeSelect.value);
     });
 
     playBigTop.addEventListener("click", () => {
@@ -1018,7 +1087,7 @@
     });
 
     updateLabels();
-    applyStyles();
+    applyTheme(themeSelect.value);
     rebuildWordsFromInput();
   </script>
 </body>
