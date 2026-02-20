@@ -17,6 +17,8 @@
       --panel2: rgba(255,255,255,0.65);
       --line: rgba(0,0,0,0.14);
       --focus:#e53935;
+      --btn: rgba(255,255,255,0.82);
+      --btnBorder: rgba(0,0,0,0.22);
     }
 
     *{ box-sizing:border-box; }
@@ -80,7 +82,6 @@
       font-size: 64px;
     }
 
-    /* Fixed ORP layout */
     #wordGrid{
       display: grid;
       grid-template-columns: 1fr auto 1fr;
@@ -93,7 +94,6 @@
       justify-self: end;
       text-align: right;
       white-space: pre;
-      padding-right: 0px;
     }
 
     #wFocus{
@@ -101,16 +101,39 @@
       text-align: center;
       white-space: pre;
       color: var(--focus);
-      font-weight: 700;
-      padding: 0 0px;
-      min-width: 1ch;
+      font-weight: inherit;
+      letter-spacing: inherit;
+      line-height: inherit;
     }
 
     #wRight{
       justify-self: start;
       text-align: left;
       white-space: pre;
-      padding-left: 0px;
+    }
+
+    .bigPlayWrap{
+      display:flex;
+      justify-content: center;
+      align-items: center;
+      margin-top: 6px;
+    }
+
+    .bigPlay{
+      padding: 14px 22px;
+      border-radius: 16px;
+      border: 1px solid var(--btnBorder);
+      background: var(--btn);
+      cursor: pointer;
+      font: inherit;
+      font-weight: 800;
+      font-size: 16px;
+      letter-spacing: 0.01em;
+      min-width: 220px;
+    }
+
+    .bigPlay:hover{
+      background: rgba(255,255,255,0.96);
     }
 
     #controls{
@@ -193,14 +216,6 @@
       background: rgba(255,255,255,0.95);
     }
 
-    #play{
-      padding: 12px 18px;
-      border-radius: 14px;
-      font-weight: 800;
-      font-size: 16px;
-      border: 1px solid rgba(0,0,0,0.22);
-    }
-
     .btnRow{
       display:flex;
       gap: 8px;
@@ -268,6 +283,10 @@
             <span id="wRight"></span>
           </div>
         </div>
+
+        <div class="bigPlayWrap">
+          <button class="bigPlay" id="playBigTop">Play</button>
+        </div>
       </div>
     </div>
 
@@ -276,6 +295,10 @@
 
         <div class="panel">
           <div class="panelTitle">Text input</div>
+
+          <div class="bigPlayWrap" style="justify-content:flex-start;margin-top:0;">
+            <button class="bigPlay" id="playBigMid" style="min-width:260px;">Play</button>
+          </div>
 
           <textarea id="textInput" rows="8" placeholder="Paste text here. Press Play."></textarea>
 
@@ -303,7 +326,7 @@
           </div>
 
           <div id="hint">
-            Hotkeys. Space toggles play. Left and right steps. Escape stops. H hides controls.
+            Hotkeys. Space toggles play. Left and right steps. Escape stops. H hides controls. Click anywhere shows controls.
           </div>
         </div>
 
@@ -355,12 +378,8 @@
           </div>
 
           <div class="btnRow">
-            <button id="play">Play</button>
             <button id="pause">Pause</button>
             <button id="reset">Reset</button>
-          </div>
-
-          <div class="btnRow">
             <button id="prev">Prev</button>
             <button id="next">Next</button>
             <button id="hideControls">Hide controls</button>
@@ -393,15 +412,6 @@
               Background
               <input id="bgColor" type="color" value="#f6f4ee">
             </label>
-          </div>
-
-          <div class="row">
-            <div>Align</div>
-            <select id="align">
-              <option value="left">Left</option>
-              <option value="center" selected>Center</option>
-              <option value="right">Right</option>
-            </select>
           </div>
 
         </div>
@@ -472,38 +482,241 @@
       return chars.indexOf(last) >= 0;
     }
 
+    let evenFlip = false;
+
+    function splitWordFixedCenter(word) {
+      const w0 = String(word || "");
+      const w = w0.replace(/\s+/g, "");
+      if (!w) return { left: "", focus: "", right: "" };
+
+      const len = w.length;
+
+      let focusIndex = 0;
+      if (len === 1) {
+        focusIndex = 0;
+      } else if (len % 2 === 1) {
+        focusIndex = Math.floor(len / 2);
+      } else {
+        evenFlip = !evenFlip;
+        focusIndex = evenFlip ? (len / 2) : (len / 2 - 1);
+      }
+
+      const left = w.slice(0, focusIndex);
+      const focus = w.slice(focusIndex, focusIndex + 1);
+      const right = w.slice(focusIndex + 1);
+      return { left, focus, right };
+    }
+
+    const textInput = document.getElementById("textInput");
+    const fileInput = document.getElementById("fileInput");
+    const clearFile = document.getElementById("clearFile");
+    const statusEl = document.getElementById("status");
+
+    const ignoreHeaderFooter = document.getElementById("ignoreHeaderFooter");
+    const trimPercent = document.getElementById("trimPercent");
+    const trimLabel = document.getElementById("trimLabel");
+
+    const wpm = document.getElementById("wpm");
+    const wpmLabel = document.getElementById("wpmLabel");
+
+    const commaPause = document.getElementById("commaPause");
+    const commaLabel = document.getElementById("commaLabel");
+
+    const periodPause = document.getElementById("periodPause");
+    const periodLabel = document.getElementById("periodLabel");
+
+    const skipParen = document.getElementById("skipParen");
+    const focusMode = document.getElementById("focusMode");
+    const focusColor = document.getElementById("focusColor");
+    const weight = document.getElementById("weight");
+
+    const pauseBtn = document.getElementById("pause");
+    const resetBtn = document.getElementById("reset");
+    const prevBtn = document.getElementById("prev");
+    const nextBtn = document.getElementById("next");
+    const hideControlsBtn = document.getElementById("hideControls");
+
+    const playBigTop = document.getElementById("playBigTop");
+    const playBigMid = document.getElementById("playBigMid");
+
+    const idxLabel = document.getElementById("idxLabel");
+    const totalLabel = document.getElementById("totalLabel");
+
+    const readerPos = document.getElementById("readerPos");
+    const size = document.getElementById("size");
+    const sizeLabel = document.getElementById("sizeLabel");
+    const textColor = document.getElementById("textColor");
+    const bgColor = document.getElementById("bgColor");
+
+    const stage = document.getElementById("stage");
+    const wordEl = document.getElementById("word");
+    const wLeftEl = document.getElementById("wLeft");
+    const wFocusEl = document.getElementById("wFocus");
+    const wRightEl = document.getElementById("wRight");
+
+    let words = [];
+    let idx = 0;
+    let isPlaying = false;
+    let timer = null;
+
     function setStatus(s) {
       statusEl.textContent = s;
     }
 
-    function computeOrpIndex(coreLen) {
-      if (coreLen <= 1) return 0;
-      if (coreLen <= 5) return 1;
-      if (coreLen <= 9) return 2;
-      if (coreLen <= 13) return 3;
-      return 4;
+    function baseMs() {
+      const v = clamp(Number(wpm.value), 60, 2000);
+      return Math.round(60000 / v);
     }
 
-    function splitWordForFocus(word) {
-      const w = String(word || "");
-      if (!w) return { left: "", focus: "", right: "" };
+    function extraPauseMs(word) {
+      if (!word) return 0;
+      if (endsWithAny(word, ",;:")) return Number(commaPause.value) || 0;
+      if (endsWithAny(word, ".!?")) return Number(periodPause.value) || 0;
+      return 0;
+    }
 
-      const m = w.match(/^([^A-Za-z0-9]*)([A-Za-z0-9]+)([^A-Za-z0-9]*)$/);
-      if (!m) {
-        const i = clamp(Math.floor(w.length / 2), 0, Math.max(0, w.length - 1));
-        return { left: w.slice(0, i), focus: w.slice(i, i + 1), right: w.slice(i + 1) };
+    function updateMeta() {
+      totalLabel.textContent = String(words.length);
+      idxLabel.textContent = words.length ? String(idx + 1) : "0";
+    }
+
+    function clearDisplay() {
+      wLeftEl.textContent = "";
+      wFocusEl.textContent = "";
+      wRightEl.textContent = "";
+      updateMeta();
+      setPlayLabels();
+    }
+
+    function setPlayLabels() {
+      const label = isPlaying ? "Pause" : "Play";
+      playBigTop.textContent = label;
+      playBigMid.textContent = label;
+    }
+
+    function renderWord() {
+      if (!words.length) {
+        clearDisplay();
+        return;
       }
 
-      const lead = m[1] || "";
-      const core = m[2] || "";
-      const trail = m[3] || "";
+      const w = words[idx] || "";
+      updateMeta();
 
-      const orp = clamp(computeOrpIndex(core.length), 0, Math.max(0, core.length - 1));
-      return {
-        left: lead + core.slice(0, orp),
-        focus: core.slice(orp, orp + 1),
-        right: core.slice(orp + 1) + trail
-      };
+      if (!focusMode.checked) {
+        wLeftEl.textContent = "";
+        wFocusEl.style.color = textColor.value;
+        wFocusEl.textContent = w;
+        wRightEl.textContent = "";
+        setPlayLabels();
+        return;
+      }
+
+      wFocusEl.style.color = getComputedStyle(document.documentElement).getPropertyValue("--focus").trim() || focusColor.value;
+
+      const parts = splitWordFixedCenter(w);
+      wLeftEl.textContent = parts.left;
+      wFocusEl.textContent = parts.focus;
+      wRightEl.textContent = parts.right;
+
+      setPlayLabels();
+    }
+
+    function stop() {
+      isPlaying = false;
+      if (timer) clearTimeout(timer);
+      timer = null;
+      setPlayLabels();
+    }
+
+    function scheduleNext() {
+      if (!isPlaying) return;
+
+      const last = Math.max(0, words.length - 1);
+      if (!words.length) {
+        stop();
+        return;
+      }
+
+      const current = words[idx] || "";
+      const delay = baseMs() + extraPauseMs(current);
+
+      timer = setTimeout(() => {
+        if (!isPlaying) return;
+
+        if (idx >= last) {
+          idx = last;
+          renderWord();
+          stop();
+          return;
+        }
+
+        idx += 1;
+        renderWord();
+        scheduleNext();
+      }, delay);
+    }
+
+    function start() {
+      if (!words.length) return;
+      stop();
+      isPlaying = true;
+      setPlayLabels();
+      scheduleNext();
+    }
+
+    function togglePlay() {
+      if (isPlaying) stop();
+      else start();
+    }
+
+    function reset() {
+      stop();
+      idx = 0;
+      renderWord();
+    }
+
+    function stepPrev() {
+      stop();
+      idx = clamp(idx - 1, 0, Math.max(0, words.length - 1));
+      renderWord();
+    }
+
+    function stepNext() {
+      stop();
+      idx = clamp(idx + 1, 0, Math.max(0, words.length - 1));
+      renderWord();
+    }
+
+    function rebuildWordsFromInput() {
+      words = tokenize(textInput.value, skipParen.checked);
+      idx = 0;
+      stop();
+      renderWord();
+    }
+
+    function updateLabels() {
+      wpmLabel.textContent = String(wpm.value);
+      commaLabel.textContent = String(commaPause.value);
+      periodLabel.textContent = String(periodPause.value);
+      sizeLabel.textContent = String(size.value);
+      trimLabel.textContent = String(trimPercent.value);
+    }
+
+    function applyStyles() {
+      document.documentElement.style.setProperty("--focus", focusColor.value);
+
+      wordEl.style.fontWeight = String(weight.value || "600");
+      wordEl.style.fontSize = String(size.value) + "px";
+      wordEl.style.color = textColor.value;
+
+      document.body.style.backgroundColor = bgColor.value;
+      document.body.style.color = textColor.value;
+
+      stage.className = "";
+      if (readerPos.value === "top") stage.classList.add("stageTop");
+      if (readerPos.value === "upper") stage.classList.add("stageUpper");
+      if (readerPos.value === "middle") stage.classList.add("stageMiddle");
     }
 
     async function extractPdfText(arrayBuffer) {
@@ -576,205 +789,16 @@
       return out.trim();
     }
 
-    const textInput = document.getElementById("textInput");
-    const fileInput = document.getElementById("fileInput");
-    const clearFile = document.getElementById("clearFile");
-    const statusEl = document.getElementById("status");
-
-    const ignoreHeaderFooter = document.getElementById("ignoreHeaderFooter");
-    const trimPercent = document.getElementById("trimPercent");
-    const trimLabel = document.getElementById("trimLabel");
-
-    const wpm = document.getElementById("wpm");
-    const wpmLabel = document.getElementById("wpmLabel");
-
-    const commaPause = document.getElementById("commaPause");
-    const commaLabel = document.getElementById("commaLabel");
-
-    const periodPause = document.getElementById("periodPause");
-    const periodLabel = document.getElementById("periodLabel");
-
-    const skipParen = document.getElementById("skipParen");
-    const focusMode = document.getElementById("focusMode");
-    const focusColor = document.getElementById("focusColor");
-    const weight = document.getElementById("weight");
-
-    const playBtn = document.getElementById("play");
-    const pauseBtn = document.getElementById("pause");
-    const resetBtn = document.getElementById("reset");
-    const prevBtn = document.getElementById("prev");
-    const nextBtn = document.getElementById("next");
-    const hideControlsBtn = document.getElementById("hideControls");
-
-    const idxLabel = document.getElementById("idxLabel");
-    const totalLabel = document.getElementById("totalLabel");
-
-    const readerPos = document.getElementById("readerPos");
-    const size = document.getElementById("size");
-    const sizeLabel = document.getElementById("sizeLabel");
-    const textColor = document.getElementById("textColor");
-    const bgColor = document.getElementById("bgColor");
-    const align = document.getElementById("align");
-
-    const stage = document.getElementById("stage");
-    const wLeftEl = document.getElementById("wLeft");
-    const wFocusEl = document.getElementById("wFocus");
-    const wRightEl = document.getElementById("wRight");
-
-    let words = [];
-    let idx = 0;
-    let isPlaying = false;
-    let timer = null;
-
-    function baseMs() {
-      const v = clamp(Number(wpm.value), 60, 2000);
-      return Math.round(60000 / v);
-    }
-
-    function extraPauseMs(word) {
-      if (!word) return 0;
-      if (endsWithAny(word, ",;:")) return Number(commaPause.value) || 0;
-      if (endsWithAny(word, ".!?")) return Number(periodPause.value) || 0;
-      return 0;
-    }
-
-    function updateMeta() {
-      totalLabel.textContent = String(words.length);
-      idxLabel.textContent = words.length ? String(idx + 1) : "0";
-    }
-
-    function clearDisplay() {
-      wLeftEl.textContent = "";
-      wFocusEl.textContent = "";
-      wRightEl.textContent = "";
-      updateMeta();
-    }
-
-    function renderWord() {
-      if (!words.length) {
-        clearDisplay();
-        return;
+    function showControls() {
+      if (document.body.classList.contains("hideControls")) {
+        document.body.classList.remove("hideControls");
+        hideControlsBtn.textContent = "Hide controls";
       }
-
-      const w = words[idx] || "";
-      updateMeta();
-
-      if (!focusMode.checked) {
-        wLeftEl.textContent = "";
-        wFocusEl.textContent = w;
-        wRightEl.textContent = "";
-        return;
-      }
-
-      const parts = splitWordForFocus(w);
-      wLeftEl.textContent = parts.left;
-      wFocusEl.textContent = parts.focus;
-      wRightEl.textContent = parts.right;
     }
 
-    function stop() {
-      isPlaying = false;
-      if (timer) clearTimeout(timer);
-      timer = null;
-    }
-
-    function scheduleNext() {
-      if (!isPlaying) return;
-
-      const last = Math.max(0, words.length - 1);
-      if (!words.length) {
-        stop();
-        return;
-      }
-
-      const current = words[idx] || "";
-      const delay = baseMs() + extraPauseMs(current);
-
-      timer = setTimeout(() => {
-        if (!isPlaying) return;
-
-        if (idx >= last) {
-          idx = last;
-          renderWord();
-          stop();
-          return;
-        }
-
-        idx += 1;
-        renderWord();
-        scheduleNext();
-      }, delay);
-    }
-
-    function start() {
-      if (!words.length) return;
-      stop();
-      isPlaying = true;
-      scheduleNext();
-    }
-
-    function reset() {
-      stop();
-      idx = 0;
-      renderWord();
-    }
-
-    function stepPrev() {
-      stop();
-      idx = clamp(idx - 1, 0, Math.max(0, words.length - 1));
-      renderWord();
-    }
-
-    function stepNext() {
-      stop();
-      idx = clamp(idx + 1, 0, Math.max(0, words.length - 1));
-      renderWord();
-    }
-
-    function rebuildWordsFromInput() {
-      words = tokenize(textInput.value, skipParen.checked);
-      idx = 0;
-      stop();
-      renderWord();
-    }
-
-    function updateLabels() {
-      wpmLabel.textContent = String(wpm.value);
-      commaLabel.textContent = String(commaPause.value);
-      periodLabel.textContent = String(periodPause.value);
-      sizeLabel.textContent = String(size.value);
-      trimLabel.textContent = String(trimPercent.value);
-    }
-
-    function applyStyles() {
-      document.documentElement.style.setProperty("--focus", focusColor.value);
-
-      const wt = String(weight.value || "600");
-      document.getElementById("word").style.fontWeight = wt;
-
-      document.body.style.backgroundColor = bgColor.value;
-      document.body.style.color = textColor.value;
-
-      const wordEl = document.getElementById("word");
-      wordEl.style.fontSize = String(size.value) + "px";
-      wordEl.style.textAlign = "center";
-      wordEl.style.color = textColor.value;
-
-      stage.className = "";
-      if (readerPos.value === "top") stage.classList.add("stageTop");
-      if (readerPos.value === "upper") stage.classList.add("stageUpper");
-      if (readerPos.value === "middle") stage.classList.add("stageMiddle");
-
-      const grid = document.getElementById("wordGrid");
-      if (align.value === "left") {
-        grid.style.width = "min(1100px, 92vw)";
-      }
-      if (align.value === "center") {
-        grid.style.width = "min(1100px, 92vw)";
-      }
-      if (align.value === "right") {
-        grid.style.width = "min(1100px, 92vw)";
-      }
+    function hideControls() {
+      document.body.classList.add("hideControls");
+      hideControlsBtn.textContent = "Show controls";
     }
 
     textInput.addEventListener("input", rebuildWordsFromInput);
@@ -801,11 +825,35 @@
       renderWord();
     });
 
-    playBtn.addEventListener("click", start);
-    pauseBtn.addEventListener("click", stop);
-    resetBtn.addEventListener("click", reset);
-    prevBtn.addEventListener("click", stepPrev);
-    nextBtn.addEventListener("click", stepNext);
+    playBigTop.addEventListener("click", () => {
+      showControls();
+      togglePlay();
+    });
+
+    playBigMid.addEventListener("click", () => {
+      showControls();
+      togglePlay();
+    });
+
+    pauseBtn.addEventListener("click", () => {
+      showControls();
+      stop();
+    });
+
+    resetBtn.addEventListener("click", () => {
+      showControls();
+      reset();
+    });
+
+    prevBtn.addEventListener("click", () => {
+      showControls();
+      stepPrev();
+    });
+
+    nextBtn.addEventListener("click", () => {
+      showControls();
+      stepNext();
+    });
 
     hideControlsBtn.addEventListener("click", () => {
       const hidden = document.body.classList.toggle("hideControls");
@@ -859,7 +907,10 @@
       }
     });
 
-    readerPos.addEventListener("change", applyStyles);
+    readerPos.addEventListener("change", () => {
+      applyStyles();
+      renderWord();
+    });
 
     size.addEventListener("input", () => {
       updateLabels();
@@ -877,30 +928,36 @@
       renderWord();
     });
 
-    align.addEventListener("change", () => {
-      applyStyles();
-      renderWord();
-    });
+    document.addEventListener("click", () => {
+      showControls();
+    }, { capture: true });
 
     window.addEventListener("keydown", (e) => {
-      if (e.code === "Space") {
-        e.preventDefault();
-        if (isPlaying) stop();
-        else start();
-        return;
-      }
-      if (e.code === "ArrowLeft") {
-        stepPrev();
-        return;
-      }
-      if (e.code === "ArrowRight") {
-        stepNext();
-        return;
-      }
       if (e.code === "Escape") {
+        showControls();
         stop();
         return;
       }
+
+      if (e.code === "Space") {
+        e.preventDefault();
+        showControls();
+        togglePlay();
+        return;
+      }
+
+      if (e.code === "ArrowLeft") {
+        showControls();
+        stepPrev();
+        return;
+      }
+
+      if (e.code === "ArrowRight") {
+        showControls();
+        stepNext();
+        return;
+      }
+
       if (e.key === "h" || e.key === "H") {
         const hidden = document.body.classList.toggle("hideControls");
         hideControlsBtn.textContent = hidden ? "Show controls" : "Hide controls";
